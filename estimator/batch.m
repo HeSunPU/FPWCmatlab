@@ -12,9 +12,9 @@ function [EfocalEst, IincoEst, data] = batch(u, image, darkHole, model, estimato
 % estimator - the properties of estimator
 %
 % check number of inputs
-if nargin > 8
+if nargin > 7
     disp('Wrong number of input parameters!!');
-elseif nargin < 8
+elseif nargin < 7
     kWavelength = 0;
 end
 % assert we do want to use batch process estimator
@@ -63,8 +63,8 @@ end
 EfocalEst = zeros(darkHole.pixelNum, 1);
 IincoEst = zeros(darkHole.pixelNum, 1);
 if data.itr > 0
-    R = 2 * data.backgroundStd(data.itr)^2 * eye(estimator.NumImgPair);
-else
+%     R = 2 * data.backgroundStd(data.itr)^2 * eye(estimator.NumImgPair);
+% else
     R = 2 * 3e-13 * eye(estimator.NumImgPair);
 end
 %%
@@ -91,8 +91,10 @@ for q = 1 : darkHole.pixelNum
     if data.itr > 0
         if kWavelength == 0
             data.P(1:2,1:2,q,data.itr) = Hinv * R * Hinv';
+            data.y(:, :, data.itr) = Idiff';
         else
             data.P(1:2, 1:2, q, kWavelength, data.itr) = Hinv * R * Hinv';
+            data.yBroadband(:, :, kWavelength, data.itr) = Idiff';
         end
     end
 end

@@ -64,16 +64,17 @@ switch lower(estimator.probeMethod)
         switch lower(estimator.type)
             case {'ekf', 'ukf'}
                 if (estimator.EKFpairProbing == 0)
-                    omega = 1.5708/estimator.NumImg;
-                    offsets = (omega * (data.itr-1) + (0 : estimator.NumImg-1))' * pi / estimator.NumImg;
+                    omega = pi/2 * estimator.NumImg;%/estimator.NumImg;
+                    offsets = omega * (data.itr-1) + (0 : estimator.NumImg-1)' * pi / estimator.NumImg;
                 else
-                    omega = 1.5708/estimator.NumImgPair;
-                    offsets = (omega * (data.itr-1) + (0 : estimator.NumImgPair-1))' * pi / estimator.NumImgPair;
+                    omega = pi/2 * estimator.NumImgPair;%1.5708/estimator.NumImgPair;
+                    offsets = omega * (data.itr-1) + (0 : estimator.NumImgPair-1)' * pi / estimator.NumImgPair;
                 end
             otherwise
-%                 omega = 1.5708/estimator.NumImgPair;
-                omega = 1.5708/2;
-                offsets = (omega * (data.itr-1) + (0 : estimator.NumImgPair-1))' * pi / estimator.NumImgPair;
+                omega = pi/2 * estimator.NumImgPair;%1.5708/estimator.NumImgPair;
+%                 omega = 1.5708/1;
+                offsets = omega * (data.itr-1) + (0 : estimator.NumImgPair-1)' * pi / estimator.NumImgPair;
+%                 offsets = (omega * (data.itr-1) + (0 : estimator.NumImgPair-1))' * pi / estimator.NumImgPair;
         end
     otherwise
         disp('The probing offset has not been assigned!');

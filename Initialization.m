@@ -27,7 +27,7 @@ switch lower(computerID)
         folder.controller = 'C:\Lab\FPWCmatlab\controller';
         folder.estimator = 'C:\Lab\FPWCmatlab\estimator';
         folder.hardware = 'C:\Lab\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20181101';
+        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20181225';
         folder.LOWFS = 'C:\Lab\FPWCmatlab\LOWFS';
     case 'hesunlaptop'
         folder.main = pwd;
@@ -43,7 +43,7 @@ switch lower(computerID)
         disp('The computer ID you give is not correct!!');
         return;
 end
-addpath(folder.optics);
+addpath(genpath(folder.optics));
 addpath(folder.DM);
 addpath(folder.dataLibrary);
 addpath(folder.SSM);
@@ -61,12 +61,12 @@ DM.DMmesh = [442, 442]; % The pixel number in each direction should better be ev
 DM.Nact = 34; % number of actuators in one direction
 DM.pitch = 301e-6;%282.7e-6;%271e-6;%276.1e-6;%273.2e-6;%281.3e-6; % pitch size of DM actuator in meters
 DM.widthDM = DM.pitch * DM.Nact; % DM width in meters, usually the DM is square
-DM.DM1gain = 5.06e-9 * (ones(DM.Nact, DM.Nact)+ 0.6*(rand(DM.Nact, DM.Nact)-0.5));%5.06e-9 * (ones(DM.Nact, DM.Nact) + 0.8 * (rand(DM.Nact, DM.Nact)-0.5));% %6.27e-9 * ones(DM.Nact, DM.Nact);
-DM.DM2gain = 6.27e-9 * (ones(DM.Nact, DM.Nact)+ 0.6*(rand(DM.Nact, DM.Nact)-0.5)); % the DM gain (voltage to height) of each actuator, unit: meter / volt
-% temp = load('DM1gain.mat');
-% DM.DM1gain = temp.DM1gain;
-% temp = load('DM2gain.mat');
-% DM.DM2gain = temp.DM2gain;
+% DM.DM1gain = 5.06e-9 * (ones(DM.Nact, DM.Nact)+ 0.8*(rand(DM.Nact, DM.Nact)-0.5));%5.06e-9 * (ones(DM.Nact, DM.Nact) + 0.8 * (rand(DM.Nact, DM.Nact)-0.5));% %6.27e-9 * ones(DM.Nact, DM.Nact);
+% DM.DM2gain = 6.27e-9 * (ones(DM.Nact, DM.Nact)+ 0.8*(rand(DM.Nact, DM.Nact)-0.5)); % the DM gain (voltage to height) of each actuator, unit: meter / volt
+temp = load('DM1gain.mat');
+DM.DM1gain = temp.DM1gain;
+temp = load('DM2gain.mat');
+DM.DM2gain = temp.DM2gain;
 
 DM.zDM1toDM2 = 0.23;%0.33697;%0.42545;%simulation shows 0.22 may be the best % distance from  DM1 to DM2 in meters
 DM.voltageLimit = 50; % the limt for DM voltage in volts
@@ -85,8 +85,8 @@ DM.DM2command = zeros(DM.activeActNum, 1);
 DM.DMvoltageStd = 0.01; % DM voltage std as the ratio of control command
 DM.noise = 0; % 1 stands for that we add virtual noises during simulation
 DM.DMperfect = DM;
-% DM.DMperfect.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact);%5.06e-9 * (ones(DM.Nact, DM.Nact) + 0.8 * (rand(DM.Nact, DM.Nact)-0.5));% %6.27e-9 * ones(DM.Nact, DM.Nact);
-% DM.DMperfect.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
+DM.DMperfect.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact);%5.06e-9 * (ones(DM.Nact, DM.Nact) + 0.8 * (rand(DM.Nact, DM.Nact)-0.5));% %6.27e-9 * ones(DM.Nact, DM.Nact);
+DM.DMperfect.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
 
 %% Initialize the coronagraph instrument layout
 coronagraph.type = 'SPLC';%'SPC';%
@@ -175,7 +175,7 @@ camera.noise = 1; % 1 stand for that we put some virtual noises in the simulatio
 %% Initialize the parameters for the target, now only consider the monochromatic case
 target.star = 1; % 1 for 'on', 0 for 'off'
 target.planet = 0; % 1 for 'on', 0 for 'off'
-target.broadBandControl = 1; % broadband control or monochromatic control
+target.broadBandControl = 0;%1; % broadband control or monochromatic control
 target.planetContrast = 1e-8; % the contrast of planet compared with star
 target.starWavelength = 635e-9; % Unit: meters
 target.starWavelengthBroad = 605e-9:10e-9:665e-9; % The broadband wavelengths
@@ -278,7 +278,7 @@ if strcmpi(coronagraph.type, 'SPC')
 end
 %% Initialize the dark hole region
 darkHole.type = 'wedge';%'wedge'; % the type(shape) of the dark hole regions - 'wedge' or 'box'
-darkHole.side = 'LR';%'LR';% % the side where dark holes located - 'L', 'R' or 'LR'
+darkHole.side = 'LR';%'L';% % the side where dark holes located - 'L', 'R' or 'LR'
 darkHole.rangeX = [7, 10]; % used for 'box' dark hole only, unit - f * lambda / D
 darkHole.rangeY = [-3, 3]; % used for 'box' dark hole only, unit - f * lambda / D
 darkHole.rangeR = [2.5, 9];%[6, 10]; %[6, 11];%[5.5, 10.5]; % used for 'wedge' dark hole only, unit - f * lambda / D
@@ -289,8 +289,8 @@ darkHole.pixelIndex = find(darkHole.mask(:) == 1); % the pixel indices in the da
 darkHole.pixelNum = length(darkHole.pixelIndex); % the number of pixels in the dark holes
 
 %% Initialize the controllers
-controller.type = 'EFC';%'EFC';%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
-controller.whichDM = 'both';%'both';%  % which DM we use for wavefront control, '1', '2' or 'both'
+controller.type = 'EFC';%'MultiSpeckleNulling';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
+controller.whichDM = 'both';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
 if strcmpi(controller.type, 'EFC')
     controller.alpha = 1e-6;%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
     controller.adaptiveEFC = 0; % 1 stands for that we automatically choose regularization parameter, 0 stands for fixed regularization. It is a kind of greedy, so it is trapped by local minimum after some iterations.
@@ -300,7 +300,7 @@ if strcmpi(controller.type, 'robustLP')
     addpath(controller.gurobiPath);
     gurobi_setup();
 end
-if strcmpi(controller.type, 'speckleNulling')
+if strcmpi(controller.type, 'speckleNulling') || strcmpi(controller.type, 'MultiSpeckleNulling')
     controller.whichDM = '1'; % only the first DM can be used for speckle nulling 
     if strcmpi(coronagraph.type, 'SPLC')
         Npsf = 7;
@@ -347,11 +347,11 @@ end
 % controller.linearControllerType = 'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin'; %'energyMin';
 
 %% Initialize the estimators
-estimator.type = 'batch';%'Kalman';%'EKF';%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
+estimator.type = 'batch';%'Kalman';%'batch';%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
 estimator.whichDM = '1';%'1'; % which DM we use for probing, '1' or '2'
 estimator.NumImgPair = 2; % Used for 'batch' and 'Kalman'
-estimator.NumImg = 1; % Used for 'EKF' or 'UKF', which not require pair-wise probing
-estimator.linearProbe = 0; % 1 stands for only considering the linear part of DM probing, 0 stands for simulating the probing which include all the terms
+estimator.NumImg = 4; % Used for 'EKF' or 'UKF', which not require pair-wise probing
+estimator.linearProbe = 1;%1; % 1 stands for only considering the linear part of DM probing, 0 stands for simulating the probing which include all the terms
 estimator.EKFpairProbing = 0; % 1 stands for still using pair-wise probing, 0 stands for not
 estimator.itrEKF = 10;%10;%3; % Used for 'EKF' only, IEKF iterations to make more accurate estimation
 estimator.itrUKF = 10;%10; % Used for 'UKF' only, which has similar formula to IEKF
@@ -386,7 +386,7 @@ end
 
 %% Initialize the structure for saving data
 %-------------------------- Sepckle Nulling -------------------------------
-if strcmpi(controller.type, 'speckleNulling')
+if strcmpi(controller.type, 'speckleNulling') || strcmpi(controller.type, 'MultiSpeckleNulling')
     data.controllerType = controller.type;
     if target.broadBandControl
         data.measuredContrastAverage = zeros(Nitr, 1); % the measured average contrast in the dark holes (after wavefront correction)

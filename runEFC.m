@@ -7,7 +7,7 @@ close all;
 Nitr = 20;%4000; % iterations of control loop
 cRange = [-10, -4]; %[-12, -3];% the range for display
 simOrLab = 'simulation'; % 'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
-runTrial = 1;
+runTrial = 3;
 Initialization;
 
 %% Compute the state space model of the system
@@ -25,10 +25,14 @@ if target.broadBandControl
 %     model.G2 = G2Broadband;
     load modelBroadband.mat
     model = modelBroadband;
+%     load model4.mat
 else
 %     model = stateSpace(target, DM, coronagraph, camera, darkHole);
     load model.mat
 end
+%%
+% for kCorrection = 2 : 10
+%     runTrial = kCorrection;
 %% take focal plane image with no DM poking
 camera.exposure = 1;
 DM1command = zeros(DM.activeActNum, 1);
@@ -306,6 +310,7 @@ for itr = 1 : Nitr
                 disp('Other estimators are still under development!');
                 return;
         end
+        probeImage(:, :, :, itr) = image;
         if estimator.saveData
             data.imageSet{itr} = image;
             data.probeSet{itr} = u;
@@ -429,7 +434,70 @@ for itr = 1 : Nitr
     end
 end
 
+%% save data
+eval([data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
+cd(folder.dataLibrary);
+eval(['save ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ';']);
+cd(folder.main);
+% eval(['save model', num2str(kCorrection), ' model;']);
+% cd(folder.main);
+%% correct model errors 
+modelBroadband = model;
+% initialization of the model
+G1Learned = modelBroadband.G1;
+G2Learned = modelBroadband.G2;
+Qlearned = zeros(2, 2, size(model.G1, 1), target.broadSampleNum);
+Rlearned = zeros(2, 2, size(model.G1, 1), target.broadSampleNum);
+% clean the wavefront control data
+NitrEM = 3;
+uAll = data.DMcommand - [zeros(1904, 1), data.DMcommand(:, 1:end-1)];
+uProbeAll = cat(1, data.uProbe, zeros(size(data.uProbe)));
 
+%% start identifying the model of different pixels
+parfor index = 1: size(model.G1, 1)
+    
+    %% prepare the data
+    for kWavelength = 1 : 7
+        %%
+        disp(['Now we are learning pixel ', num2str(index), ' at wavelength ', num2str(target.starWavelengthBroad(kWavelength)), 'nm']);
+
+        G1 = [real(modelBroadband.G1(index, :, kWavelength)); imag(modelBroadband.G1(index, :, kWavelength))];
+        G2 = [real(modelBroadband.G2(index, :, kWavelength)); imag(modelBroadband.G2(index, :, kWavelength))];
+        G = [G1, G2];
+        % initialize the x0 and P0
+        x0 = [real(data.EfocalEst0(index, kWavelength)); imag(data.EfocalEst0(index, kWavelength))];
+        P0 = 1e-5 * eye(2);
+        Q = 3e-9 * eye(2);
+        R = 3e-14 * eye(estimator.NumImgPair);
+        yAll = squeeze(data.yBroadband(index, :, kWavelength, :));
+        % online learning
+        delta1 = 1e-1;
+        delta2 = 1e-1;
+        batchSize = 3; % how many observations for each updates
+    %%
+        for learningItr = 1 : batchSize : 18
+            u = uAll(:, learningItr : learningItr+batchSize-1);
+%             uProbe = uProbeAll(:, :, learningItr+1 : learningItr+1+batchSize-1);
+%             y = yAll(:, learningItr+1 : learningItr+1+batchSize-1);
+            uProbe = uProbeAll(:, :, learningItr : learningItr+batchSize-1);
+            y = yAll(:, learningItr : learningItr+batchSize-1);
+            [system, stateEst]= onlineLearning(u, y, G, Q, R, x0, P0, uProbe, NitrEM, delta1, delta2);
+            %%
+            G1Learned(index, :, kWavelength) = system.G(1, 1:size(model.G1, 2)) + 1i * system.G(2, 1:size(model.G1, 2));
+            G2Learned(index, :, kWavelength) = system.G(1, size(model.G1, 2)+1:end) + 1i * system.G(2, size(model.G1, 2)+1:end);
+            Qlearned(:, :, index, kWavelength) = system.Q;
+            Rlearned(:, :, index, kWavelength) = system.R;
+            G = system.G;
+            x0 = stateEst.x(:, end);
+            P0 = stateEst.P(:, :, end);
+        end
+
+    end
+end
+modelBroadband.G1 = G1Learned;
+modelBroadband.G2 = G2Learned;
+model = modelBroadband;
+% end
 %% introducing drift after reaching high contrast
 target.drift = 1;
 target.broadBandControl = 1;

@@ -161,7 +161,6 @@ EDM2Pad = EDM2Pad .* DM2phasePad;
 
 % propagate the field back from DM2 to DM1
 pupilPad2 = Fresnel(EDM2Pad, lambda, L, -DM.zDM1toDM2);
-
 % apply shape pupil to the field
 % SPerror = imresize(coronagraph.SPerror, coronagraph.Nsp*[1, 1], 'bicubic');
 % EspIn = exp(2 * 1i * pi *  SPerror / lambda) .* pupilPad2(NpupilPad/2+1-coronagraph.Nsp/2: NpupilPad/2+coronagraph.Nsp/2, NpupilPad/2+1-coronagraph.Nsp/2: NpupilPad/2+coronagraph.Nsp/2);
@@ -182,4 +181,5 @@ ElyotOut = coronagraph.LyotStop .* ElyotIn;
 % Fourier transform from Lyot plane back to focal plane
 out = Fourier(ElyotOut, coronagraph.focalLength, lambda, coronagraph.lyotWidth, coronagraph.lyotWidth,...
     camera.pitch*camera.binXi, camera.Nxi, camera.pitch*camera.binEta, camera.Neta);
+
 end
