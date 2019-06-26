@@ -7,7 +7,7 @@
 %
 
 %% Initialize the path, should change for different computers
-computerID = 'ultron'; % 'ultron', 'hesun', or 'hesunLaptop'
+computerID = 'sfrlaptop';%'ultron'; % 'ultron', 'hesun', or 'hesunLaptop'
 switch lower(computerID)
     case 'hesun'
         folder.main = 'C:\Users\hesun\Google Drive\Kasdin_lab\FPWC';
@@ -40,6 +40,16 @@ switch lower(computerID)
         folder.hardware = [pwd, '\hardware'];
         folder.dataLibrary = [pwd, '\dataLibrary\09122018'];
         folder.LOWFS = [pwd, '\LOWFS'];
+    case 'sfrlaptop'
+        folder.main = pwd;
+        folder.optics = [pwd, '/opticalModel'];
+        folder.DM = [pwd, '/DMmodel'];
+        folder.SSM = [pwd, '/stateSpaceModel'];
+        folder.controller = [pwd, '/controller'];
+        folder.estimator = [pwd, '/estimator'];
+        folder.hardware = [pwd, '/hardware'];
+        folder.dataLibrary = [pwd, '/dataLibrary/09122018'];
+        folder.LOWFS = [pwd, '/LOWFS'];
     otherwise
         disp('The computer ID you give is not correct!!');
         return;
