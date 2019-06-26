@@ -1,13 +1,14 @@
 
 clc;
-clear;
+% clear;
 close all;
 
 %% Initialize the system and parameters
-Nitr = 20;%4000; % iterations of control loop
+% for runTrial = 1 : 50
+Nitr = 40;%4000; % iterations of control loop
 cRange = [-8, -4]; %[-12, -3];% the range for display
-simOrLab = 'simulation';%'lab';%  'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
-runTrial = 1;
+simOrLab = 'simulation'; % 'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
+% runTrial = 4;
 Initialization;
 
 %% Initialize the hardware driver if we are running experiment
@@ -28,8 +29,8 @@ disconnecting = 0;
 if disconnecting == 1
 	error = BurstHVA4096Frame1D(1, zeros(4096,1)); % finalize DMs
 	finalizeCamera(camera) % finalize the camera
-    Laser_Power(0, 1)
-    Laser_Enable('off')    
+%     Laser_Power(0, 1)
+%     Laser_Enable('off')    
 end
 %% Compute the state space model of the system
 % parpool(16);
@@ -48,68 +49,40 @@ if target.broadBandControl
     model = modelBroadband;
 %     load model4.mat
 else
-    model = stateSpace(target, DM, coronagraph, camera, darkHole);
-%     load model.mat
+%     model = stateSpace(target, DM, coronagraph, camera, darkHole);
+    load model.mat
 end
 
-%% define active sensor if required
-if estimator.activeSensing 
-    G1real = py.numpy.array(real(model.G1));
-    G1imag = py.numpy.array(imag(model.G1));
-    G2real = py.numpy.array(real(model.G2));
-    G2imag = py.numpy.array(imag(model.G2));
-    switch lower(estimator.type)
-        case 'batch'
-            if estimator.EKFpairProbing
-                estimator.sensor = py.sensing.active_sensing11(G1real, G1imag, G2real, G2imag, estimator.NumImgPair, ...
-                                                            estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-            end
-        case 'kalman'
-            if estimator.EKFpairProbing
-%                 estimator.sensor = py.sensing.active_sensing5(G1real, G1imag, G2real, G2imag, estimator.NumImgPair, ...
-%                                                             estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-%                                                             estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-%                 estimator.sensor = py.sensing.active_sensing6(G1real, G1imag, G2real, G2imag, estimator.NumImgPair, ...
-%                                                             estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-%                                                             estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-    %             estimator.sensor = py.sensing.active_sensing7(G1real, G1imag, G2real, G2imag, estimator.NumImgPair, ...
-%                                                         estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-%                                                         estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-                estimator.sensor = py.sensing.active_sensing12(G1real, G1imag, G2real, G2imag, estimator.NumImgPair, ...
-                                                            estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-                                                            estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-            end
-        case 'ekf'
-            if ~estimator.EKFpairProbing
-                if strcmpi(estimator.whichDM, 'both')
-%                     estimator.sensor = py.sensing.active_sensing10(G1real, G1imag, G2real, G2imag, estimator.NumImg, ...
-%                                                                 estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-%                                                                 estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-                    estimator.sensor = py.sensing.active_sensing16(G1real, G1imag, G2real, G2imag, estimator.NumImg, ...
-                                                                estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-                                                                estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-                else
-%                     estimator.sensor = py.sensing.active_sensing8(G1real, G1imag, G2real, G2imag, estimator.NumImg, ...
-%                                                                 estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-%                                                                 estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-%                     estimator.sensor = py.sensing.active_sensing9(G1real, G1imag, G2real, G2imag, estimator.NumImg, ...
-%                                                                 estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-%                                                                 estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-                    estimator.sensor = py.sensing.active_sensing14(G1real, G1imag, G2real, G2imag, estimator.NumImg, ...
-                                                                estimator.processVarCoefficient, estimator.processVarCoefficient2, ...
-                                                                estimator.observationVarCoefficient0, estimator.observationVarCoefficient10, estimator.observationVarCoefficient3);
-                end
-            end
-        otherwise
-            disp('Not using active sensing!')
-    end
+%% define the active sensor
+G1real = py.numpy.array(real(model.G1));
+G1imag = py.numpy.array(imag(model.G1));
+G2real = py.numpy.array(real(model.G2));
+G2imag = py.numpy.array(imag(model.G2));
+switch lower(estimator.type)
+    case 'kalman'
+        if strcmpi(estimator.whichDM, 'both')
+            estimator.sensor = py.sensing.active_sensing2(G1real, G1imag, G2real, G2imag, estimator.NumImgPair, 2, ...
+                estimator.Q1, estimator.Q3, estimator.R1, estimator.R3);
+        else
+            estimator.sensor = py.sensing.active_sensing2(G1real, G1imag, G2real, G2imag, estimator.NumImgPair, 1, ...
+                    estimator.Q1, estimator.Q3, estimator.R1, estimator.R3);
+        end
+    case 'ekf'
+        if strcmpi(estimator.whichDM, 'both')
+            estimator.sensor = py.sensing.active_sensing4(G1real, G1imag, G2real, G2imag, estimator.NumImg, 2, ...
+                estimator.Q1, estimator.Q3, estimator.Q4, estimator.Q5, estimator.R1, estimator.R3);
+        else
+            estimator.sensor = py.sensing.active_sensing4(G1real, G1imag, G2real, G2imag, estimator.NumImg, 1, ...
+                estimator.Q1, estimator.Q3, estimator.Q4, estimator.Q5, estimator.R1, estimator.R3);
+        end
+    otherwise
+        disp('Not using active sensing!')
 end
 %%
-% for kCorrection = 1 : 10
+% for kCorrection = 2 : 10
 %     runTrial = kCorrection;
 %% take focal plane image with no DM poking
 camera.exposure = 0.01;
-camera.exposure0 = 0.01;
 DM1command = zeros(DM.activeActNum, 1);
 DM2command = zeros(DM.activeActNum, 1);
 if target.broadBandControl
@@ -161,7 +134,8 @@ else
     [EfocalEst, IincoEst, data] = batch(u, image, darkHole, model, estimatorBatch, data);
     EfocalEst(abs(EfocalEst).^2 > 1e-2) = 0;
     data.EfocalEst0 = EfocalEst;
-    data.IincoEst0 = IincoEst;
+%     data.IincoEst0 = IincoEst;
+    data.IincoEst0 = zeros(size(IincoEst));
     IfocalEst = abs(EfocalEst).^2;
     contrastEst = mean(IfocalEst);
     incoherentEst = mean(IincoEst);
@@ -182,15 +156,10 @@ drawnow
 
 %% Control loop start
 for itr = 1 : Nitr
-    if itr <= 3
-        camera.exposure = 0.01;
-        camera.exposure0 = 0.01;
-    elseif itr <= 15
-        camera.exposure = 0.1;
-        camera.exposure0 = 0.1;
+    if itr <= 0
+        camera.exposure = 0.03;
     else
-        camera.exposure = 0.3;
-        camera.exposure0 = 0.3;
+        camera.exposure = 0.1;
     end
     data.itr = itr;
     disp('***********************************************************************');
@@ -229,33 +198,8 @@ for itr = 1 : Nitr
                 x = [real(EfocalEst); imag(EfocalEst)];
                 if controller.adaptiveEFC % automatically choose the regularization parameter
                     controller = adaptiveEFC(x, G, target, DM, coronagraph, camera, darkHole, controller, DM1command, DM2command, simOrLab);
-                    disp(['Best alpha: ', num2str(controller.alpha)])
                 end
-                if controller.lineSearch && itr > 1
-                    P = data.P(1:2, 1:2, :, itr-1);
-                    target_contrast = max(0.1*sum(abs(x).^2)/darkHole.pixelNum, trace(mean(P, 3)));%trace(mean(P, 3));
-                    alpha_set = 10.^(-7:0.1:-6);
-                    result_contrast = zeros(size(alpha_set));
-                    for k_alpha = 1 : length(alpha_set)
-                        alpha = alpha_set(k_alpha);
-                        command = EFC(x, G, alpha);
-                        result_contrast(k_alpha) = sum(abs(x + G * command).^2)/darkHole.pixelNum;
-                        if result_contrast(k_alpha) >= target_contrast
-                            break;
-                        end
-                    end
-                    data.control_regularization(itr) = alpha_set(k_alpha);
-                    data.target_contrast_set(itr) = result_contrast(k_alpha);
-                else
-                    command = EFC(x, G, controller.alpha);
-                end
-                if itr == 1
-                    contrastEst = sum(abs(x + G * command).^2)/darkHole.pixelNum + 2*estimator.stateStd0;% + estimator.processVarCoefficient * sum(command.^2);
-                else
-                    P = data.P(1:2, 1:2, :, itr-1);
-                    contrastEst = sum(abs(x + G * command).^2)/darkHole.pixelNum + trace(mean(P, 3));% + estimator.processVarCoefficient * sum(command.^2);
-                end
-                
+                command = EFC(x, G, controller.alpha);
             end
         case 'robustlp'
             x = EfocalEst;
@@ -314,10 +258,14 @@ for itr = 1 : Nitr
         else
             if itr == 1
                 contrastPerfect = zeros(Nitr, 1);
+                EfocalPerfect = zeros(darkHole.pixelNum, Nitr);
+            end
+            if itr > 1
+                EfocalStarNoiseOld = EfocalStarNoise;
             end
             [EfocalStarNoise, EfocalPlanetNoise, InoNoise] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command);
             contrastPerfect(itr) = mean(InoNoise(darkHole.pixelIndex));
-            data.EfocalPerfect(:, itr) = EfocalStarNoise(darkHole.pixelIndex);
+            EfocalPerfect(:, itr) = EfocalStarNoise(darkHole.pixelIndex);
         end
     end
     %% estimate the electric field
@@ -388,7 +336,6 @@ for itr = 1 : Nitr
         data.IincoEst(:, :, itr) = IincoEstBroadband;
         IfocalEst = abs(EfocalEstBroadband).^2;
         contrastEst = mean(IfocalEst);
-%         contrastEst = mean(IfocalEst) + mean(squeeze(data.P(1, 1, :, itr) + data.P(2, 2, :, itr)));
         incoherentEst = mean(IincoEst);
         data.estimatedContrastAverage(:, itr) = contrastEst;
         data.estimatedIncoherentAverage(:, itr) = incoherentEst;
@@ -404,48 +351,165 @@ for itr = 1 : Nitr
             case 'batch'
                 [image, u, data] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
                 data.uProbe(:, :, data.itr) = u;
-                if estimator.EKFpairProbing
-                    [EfocalEst, IincoEst, data] = batch(u, image, darkHole, model, estimator, data);
-                else
-                    [EfocalEst, IincoEst, data] = batch2(u, image, darkHole, model, estimator, data);
-                end
+                [EfocalEst, IincoEst, data] = batch(u, image, darkHole, model, estimator, data);
                 if itr > 5 % since the batch can be really noisy in low SNR case, zero the estimates with really high noise
                     EfocalEst(abs(EfocalEst).^2 > 1e-4) = 0;
                 else
                     EfocalEst(abs(EfocalEst).^2 > 1e-2) = 0;
                 end
             case 'kalman'
-                [image, u, data] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
-                data.uProbe(:, :, data.itr) = u;
-                if estimator.EKFpairProbing
-                    [EfocalEst, IincoEst, data] = Kalman(u, image, darkHole, model, estimator, controller, data);
+               if itr == 1
+                    E_past = data.EfocalEst0;
+                    P_past = zeros(2, 2, darkHole.pixelNum);
+                    P_past(1, 1, :) = estimator.stateStd0;
+                    P_past(2, 2, :) = estimator.stateStd0;
                 else
-                    [EfocalEst, IincoEst, data] = Kalman2(u, image, darkHole, model, estimator, controller, data);
+                    E_past = data.EfocalEst(:, itr-1);
+                    P_past = zeros(2, 2, darkHole.pixelNum);
+                    P_past(1:2, 1:2, :) = data.P(1:2, 1:2, :, itr-1);
                 end
+                
+                contrast_past = mean(abs(E_past).^2 + squeeze(P_past(1, 1, :) + P_past(2, 2, :)));
+                E_pred = E_past + model.G1 * command(1:952) + model.G2 * command(953:end);
+                contrast_pred = mean(abs(E_pred).^2 + squeeze(P_past(1, 1, :) + P_past(2, 2, :))) + 2*(sum(command.^2) + 0.3) * estimator.processVarCoefficient;
+                disp(['Past contrast: ', num2str(contrast_past), ' Predicted contrast: ', num2str(contrast_pred)]);
+                
+                E_est_past_real = py.numpy.array(real(E_past));
+                E_est_past_imag = py.numpy.array(imag(E_past));
+                P_past_permuted = permute(P_past, [3, 1, 2]);
+                P_est_past = py.numpy.array(P_past_permuted);
+                command1 = py.numpy.array(command(1:952));
+                command2 = py.numpy.array(command(953:end));
+                if estimator.activeSensing
+
+                    beta = estimator.beta;
+                    rate = estimator.rate;
+                    sgd_itr = estimator.sgd_itr;
+
+                    temp = py.sensing.optimal_probe2(estimator.sensor, E_est_past_real, E_est_past_imag, P_est_past, command1, command2, beta, rate, sgd_itr);
+                    if strcmpi(estimator.whichDM, 'both')
+                        temp2 = double(py.numpy.squeeze(temp{1}, int8(0)));
+                        temp3 = double(py.numpy.squeeze(temp{2}, int8(0)));
+                        u = [temp2, temp3]';
+                    else
+                        temp2 = double(py.numpy.squeeze(temp{1}, int8(0)));
+                        u = temp2';
+                    end
+                    
+                    
+                    image = zeros(camera.Neta, camera.Nxi, 1 + 2*estimator.NumImgPair); % unprobed and probed images
+                    image(:, :, 1) = getImg(target, DM, coronagraph, camera, DM1command, DM2command, simOrLab);
+                    for kProbe = 1 : estimator.NumImgPair
+                        if strcmpi(estimator.whichDM, 'both')
+                            image(:, :, 2*kProbe) = getImg(target, DM, coronagraph, camera, DM1command + u(1:DM.activeActNum, kProbe), DM2command + u(DM.activeActNum+1:end, kProbe), simOrLab);
+                            image(:, :, 2*kProbe+1) = getImg(target, DM, coronagraph, camera, DM1command - u(1:DM.activeActNum, kProbe), DM2command - u(DM.activeActNum+1:end, kProbe), simOrLab);
+                        else
+                            image(:, :, 2*kProbe) = getImg(target, DM, coronagraph, camera, DM1command + u(:, kProbe), DM2command, simOrLab);
+                            image(:, :, 2*kProbe+1) = getImg(target, DM, coronagraph, camera, DM1command - u(:, kProbe), DM2command, simOrLab);
+                        end
+                    end
+                else
+                    [image, u, data] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
+%                     up_values = py.numpy.array(u);
+%                     beta = estimator.beta;
+%                     cost = py.sensing.probe_cost(estimator.sensor, E_est_past_real, E_est_past_imag, P_est_past, command1, command2, beta, up_values);
+%                     disp(['cost: ', num2str(cost)])
+                end
+                data.uProbe(:, :, data.itr) = u;
+                [EfocalEst, IincoEst, data] = Kalman2(u, image, darkHole, model, estimator, controller, data);
+                figure(5), plot(u);
+                
+%                 [image, u, data] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
+%                 data.uProbe(:, :, data.itr) = u;
+%                 [EfocalEst, IincoEst, data] = Kalman(u, image, darkHole, model, estimator, controller, data);
             case 'ekf'
-                [image, u, data] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
+                if itr == 1
+                    E_past = data.EfocalEst0;
+                    P_past = zeros(3, 3, darkHole.pixelNum);
+                    P_past(1, 1, :) = estimator.stateStd0;
+                    P_past(2, 2, :) = estimator.stateStd0;
+                    P_past(3, 3, :) = estimator.incoherentStd0;
+                else
+                    E_past = data.EfocalEst(:, itr-1);%EfocalStarNoiseOld(darkHole.pixelIndex);%
+%                     P_past = zeros(3, 3, darkHole.pixelNum);
+%                     P_past(1:2, 1:2, :) = data.P(1:2, 1:2, :, itr-1);
+%                     P_past(3, 3, :) = 1e-14;
+                    P_past = data.P(:, :, :, itr-1);
+                end
+                contrast_past = mean(abs(E_past).^2 + squeeze(P_past(1, 1, :) + P_past(2, 2, :)));
+                E_pred = E_past + model.G1 * command(1:952) + model.G2 * command(953:end);
+                Q_pred = zeros(3, 3, darkHole.pixelNum);
+                Q_pred(1, 1, :) = (sum(command.^2) + 0.3) * estimator.processVarCoefficient;
+                Q_pred(2, 2, :) = (sum(command.^2) + 0.3) * estimator.processVarCoefficient;
+                if itr == 1
+                    Q_pred(3, 3, :) = max(estimator.incoherentStd^2, 0.1 * mean(data.IincoEst0.^2));
+                else
+                    Q_pred(3, 3, :) = max(estimator.incoherentStd^2, 0.1 * mean(data.IincoEst(:, data.itr-1).^2));
+                end
+                P_pred = P_past + Q_pred;
+                
+                contrast_pred = mean(abs(E_pred).^2 + squeeze(P_pred(1, 1, :) + P_pred(2, 2, :)));
+                disp(['Past contrast: ', num2str(contrast_past), ' Predicted contrast: ', num2str(contrast_pred)])
+                
+                E_est_past_real = py.numpy.array(real(E_past));
+                E_est_past_imag = py.numpy.array(imag(E_past));
+                P_past_permuted = permute(P_past, [3, 1, 2]);
+                P_est_past = py.numpy.array(P_past_permuted);
+                E_pred_real = py.numpy.array(real(E_pred));
+                E_pred_imag = py.numpy.array(imag(E_pred));
+                P_pred_permuted = permute(P_pred, [3, 1, 2]);
+                P_pred_est = py.numpy.array(P_pred_permuted);
+                
+                command1 = py.numpy.array(command(1:952));
+                command2 = py.numpy.array(command(953:end));
+                
+                if estimator.activeSensing
+
+                    beta = estimator.beta;
+                    rate = estimator.rate;
+                    sgd_itr = estimator.sgd_itr;
+%                     temp = py.sensing.optimal_probe(estimator.sensor, E_est_past_real, E_est_past_imag, P_est_past, command1, command2, beta, rate, sgd_itr);
+%                     temp = py.sensing.optimal_probe3(estimator.sensor, E_est_past_real, E_est_past_imag, P_est_past, command1, command2, beta, rate, sgd_itr);
+                    temp = py.sensing.optimal_probe4(estimator.sensor, E_pred_real, E_pred_imag, P_pred_est, beta, rate, sgd_itr);
+                    
+                    if strcmpi(estimator.whichDM, 'both')
+                        temp2 = double(py.numpy.squeeze(temp{1}, int8(0)));
+                        temp3 = double(py.numpy.squeeze(temp{2}, int8(0)));
+                        u = [temp2, temp3]';
+                    else
+                        temp2 = double(py.numpy.squeeze(temp{1}, int8(0)));
+                        u = temp2';
+                    end
+%                   
+
+                    
+%                     sensor = estimator.sensor;
+%                     optimal_offset;
+%                     u = opt_up;
+        
+                    image = zeros(camera.Neta, camera.Nxi, 1 + estimator.NumImg); % unprobed and probed images
+                    image(:, :, 1) = getImg(target, DM, coronagraph, camera, DM1command, DM2command, simOrLab);
+                    for kProbe = 1 : estimator.NumImg
+                        if strcmpi(estimator.whichDM, 'both')
+                            image(:, :, kProbe+1) = getImg(target, DM, coronagraph, camera, DM1command + u(1:DM.activeActNum, kProbe), DM2command + u(DM.activeActNum+1:end, kProbe), simOrLab);
+                        else
+                            image(:, :, kProbe+1) = getImg(target, DM, coronagraph, camera, DM1command + u(:, kProbe), DM2command, simOrLab);
+                        end
+                    end
+                else
+                    [image, u, data] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
+                    up_values = py.numpy.array(u);
+                    beta = estimator.beta;
+                    cost = py.sensing.probe_cost4(estimator.sensor, E_pred_real, E_pred_imag, P_pred_est, beta, up_values);
+                    disp(['cost: ', num2str(cost)])
+                end
                 data.uProbe(:, :, data.itr) = u;
                 if estimator.nonProbeImage
-                    if estimator.EKFincoherent
-                        [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data);
-                    else
-                        [EfocalEst, IincoEst, data] = EKF4(u, image, darkHole, model, estimator, controller, data);
-                    end
+                    [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data);
                 else
-                    if estimator.EKFincoherent
-                        [EfocalEst, IincoEst, data] = EKF2(u, image, darkHole, model, estimator, controller, data);
-                    else
-                        [EfocalEst, IincoEst, data] = EKF3(u, image, darkHole, model, estimator, controller, data);
-                    end
+                    [EfocalEst, IincoEst, data] = EKF2(u, image, darkHole, model, estimator, controller, data);
                 end
-%                 [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data);
-                if itr > 40
-                    EfocalEst(abs(EfocalEst).^2 > 1e-5) = 0;
-                elseif itr > 20 % since the batch can be really noisy in low SNR case, zero the estimates with really high noise
-                    EfocalEst(abs(EfocalEst).^2 > 1e-4) = 0;
-                else
-                    EfocalEst(abs(EfocalEst).^2 > 1e-2) = 0;
-                end
+                figure(5), plot(u);
             otherwise
                 disp('Other estimators are still under development!');
                 return;
@@ -457,14 +521,21 @@ for itr = 1 : Nitr
         end
         data.EfocalEst(:, itr) = EfocalEst;
         data.IincoEst(:, itr) = IincoEst;
-        IfocalEst = abs(EfocalEst).^2;
+        IfocalEst = abs(EfocalEst).^2;% + squeeze(data.P(1, 1, :, itr) + data.P(2, 2, :, itr));
+        IfocalEst_err = 0;
+        for pixelInd = 1 : darkHole.pixelNum
+            temp = [real(EfocalEst(pixelInd)); imag(EfocalEst(pixelInd))];
+            IfocalEst_err = IfocalEst_err + 2 * (temp'*data.P(1:2, 1:2, pixelInd, itr)*temp + trace(data.P(1:2, 1:2, pixelInd, itr)^2));
+        end
+        IfocalEst_err = sqrt(IfocalEst_err);
+        IfocalEst_err = IfocalEst_err / darkHole.pixelNum;
         contrastEst = mean(IfocalEst);
-%         contrastEst = mean(IfocalEst) + mean(squeeze(data.P(1, 1, :, itr) + data.P(2, 2, :, itr)));
         incoherentEst = mean(IincoEst);
-        data.estimatedContrastAverage(itr) = mean(IfocalEst);
+        data.estimatedContrastAverage(itr) = contrastEst;
         data.estimatedIncoherentAverage(itr) = incoherentEst;
         data.estimatedContrastMax(itr) = max(IfocalEst);
         data.estimatedContrastStd(itr) = std(IfocalEst);
+        data.estimatedContrastErr(itr) = IfocalEst_err;
     end
     disp(['The estimated average contrast in the dark holes is ', num2str(mean(contrastEst))]);
     
@@ -480,7 +551,7 @@ for itr = 1 : Nitr
         disp(['The measured average contrast in the dark holes after ', num2str(itr), ' iterations is ', num2str(mean(data.measuredContrastAverage(:, itr)))]);
     else
         camera_help = camera;
-        if itr >= 30
+        if itr >= 10
             camera_help.exposure = 10 * camera.exposure;
         end
         I = getImg(target, DM, coronagraph, camera_help, DM1command, DM2command, simOrLab);
@@ -541,6 +612,7 @@ for itr = 1 : Nitr
             figure(22), semilogy(0:itr, [data.contrast0; contrastPerfect(1:itr)], '-o');
         end
         ylim([10^(cRange(1)), 10^(cRange(2))]);
+        xlim([0, itr]);
         legend('perfect');
         drawnow
     end
@@ -583,142 +655,10 @@ for itr = 1 : Nitr
 end
 
 %% save data
-eval([data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
+eval([data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'SimTrial', num2str(runTrial), '=data;']);
 cd(folder.dataLibrary);
-eval(['save ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ';']);
+eval(['save ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'SimTrial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'SimTrial', num2str(runTrial), ';']);
 cd(folder.main);
 % eval(['save model', num2str(kCorrection), ' model;']);
 % cd(folder.main);
-
-%% correct model errors - monochromatic
-% initialization of the model
-G1Learned = model.G1;
-G2Learned = model.G2;
-Qlearned = zeros(2, 2, size(model.G1, 1));
-Rlearned = zeros(2, 2, size(model.G1, 1));
-% clean the wavefront control data
-NitrEM = 3;
-uAll = data.DMcommand - [zeros(1904, 1), data.DMcommand(:, 1:end-1)];
-uProbeAll = cat(1, data.uProbe, zeros(size(data.uProbe)));
-
-%% start identifying the model of different pixels
-parfor index = 1: size(model.G1, 1)
-    %%
-    disp(['Now we are learning pixel ', num2str(index)]);
-    G = [G1Learned(index, :), G2Learned(index, :)];
-    G = [real(G); imag(G)];
-    % initialize the x0 and P0
-    x0 = [real(data.EfocalEst0(index)); imag(data.EfocalEst0(index))];
-%     P0 = 1e-5 * eye(2);
-%     Q = 3e-9 * eye(2);
-%     R = 3e-14 * eye(estimator.NumImgPair);
-    P0 = 1e-4 * eye(2);
-    Q = 3e-8 * eye(2);
-    R = 3e-13 * eye(estimator.NumImgPair);
-    yAll = squeeze(data.y(index, :, :));
-    % online learning
-    delta1 = 1e-1;
-    delta2 = 1e-1;
-    batchSize = 3; % how many observations for each updates
-    %%
-    for learningItr = 1 : batchSize : 9
-        u = uAll(:, learningItr : learningItr+batchSize-1);
-        uProbe = uProbeAll(:, :, learningItr : learningItr+batchSize-1);
-        y = yAll(:, learningItr : learningItr+batchSize-1);
-        [system, stateEst]= onlineLearning(u, y, G, Q, R, x0, P0, uProbe, NitrEM, delta1, delta2);
-        %%
-        G1Learned(index, :) = system.G(1, 1:size(model.G1, 2)) + 1i * system.G(2, 1:size(model.G1, 2));
-        G2Learned(index, :) = system.G(1, size(model.G1, 2)+1:end) + 1i * system.G(2, size(model.G1, 2)+1:end);
-        Qlearned(:, :, index) = system.Q;
-        Rlearned(:, :, index) = system.R;
-        G = system.G;
-        x0 = stateEst.x(:, end);
-        P0 = stateEst.P(:, :, end);
-    end
-end
-model.G1 = G1Learned;
-model.G2 = G2Learned;
-% save model model
-% %% correct model errors  - broadband
-% modelBroadband = model;
-% % initialization of the model
-% G1Learned = modelBroadband.G1;
-% G2Learned = modelBroadband.G2;
-% Qlearned = zeros(2, 2, size(model.G1, 1), target.broadSampleNum);
-% Rlearned = zeros(2, 2, size(model.G1, 1), target.broadSampleNum);
-% % clean the wavefront control data
-% NitrEM = 3;
-% uAll = data.DMcommand - [zeros(1904, 1), data.DMcommand(:, 1:end-1)];
-% uProbeAll = cat(1, data.uProbe, zeros(size(data.uProbe)));
-% 
-% %% start identifying the model of different pixels
-% parfor index = 1: size(model.G1, 1)
-%     
-%     %% prepare the data
-%     for kWavelength = 1 : 7
-%         %%
-%         disp(['Now we are learning pixel ', num2str(index), ' at wavelength ', num2str(target.starWavelengthBroad(kWavelength)), 'nm']);
-% 
-%         G1 = [real(modelBroadband.G1(index, :, kWavelength)); imag(modelBroadband.G1(index, :, kWavelength))];
-%         G2 = [real(modelBroadband.G2(index, :, kWavelength)); imag(modelBroadband.G2(index, :, kWavelength))];
-%         G = [G1, G2];
-%         % initialize the x0 and P0
-%         x0 = [real(data.EfocalEst0(index, kWavelength)); imag(data.EfocalEst0(index, kWavelength))];
-%         P0 = 1e-5 * eye(2);
-%         Q = 3e-9 * eye(2);
-%         R = 3e-14 * eye(estimator.NumImgPair);
-%         yAll = squeeze(data.yBroadband(index, :, kWavelength, :));
-%         % online learning
-%         delta1 = 1e-1;
-%         delta2 = 1e-1;
-%         batchSize = 3; % how many observations for each updates
-%     %%
-%         for learningItr = 1 : batchSize : 18
-%             u = uAll(:, learningItr : learningItr+batchSize-1);
-% %             uProbe = uProbeAll(:, :, learningItr+1 : learningItr+1+batchSize-1);
-% %             y = yAll(:, learningItr+1 : learningItr+1+batchSize-1);
-%             uProbe = uProbeAll(:, :, learningItr : learningItr+batchSize-1);
-%             y = yAll(:, learningItr : learningItr+batchSize-1);
-%             [system, stateEst]= onlineLearning(u, y, G, Q, R, x0, P0, uProbe, NitrEM, delta1, delta2);
-%             %%
-%             G1Learned(index, :, kWavelength) = system.G(1, 1:size(model.G1, 2)) + 1i * system.G(2, 1:size(model.G1, 2));
-%             G2Learned(index, :, kWavelength) = system.G(1, size(model.G1, 2)+1:end) + 1i * system.G(2, size(model.G1, 2)+1:end);
-%             Qlearned(:, :, index, kWavelength) = system.Q;
-%             Rlearned(:, :, index, kWavelength) = system.R;
-%             G = system.G;
-%             x0 = stateEst.x(:, end);
-%             P0 = stateEst.P(:, :, end);
-%         end
-% 
-%     end
 % end
-% modelBroadband.G1 = G1Learned;
-% modelBroadband.G2 = G2Learned;
-% model = modelBroadband;
-% end
-
-%% introducing drift after reaching high contrast
-target.drift = 1;
-target.broadBandControl = 1;
-cameraPerfect = camera;
-cameraPerfect.noise = 0;
-for kDrift = 1 : 100
-    if target.broadBandControl
-        target_help = target;
-        Ibroadband = zeros(camera.Neta, camera.Nxi, target.broadSampleNum);
-        for kWavelength = 1 : target.broadSampleNum
-            target_help.starWavelegth = target.starWavelengthBroad(kWavelength);
-            I = getImg(target_help, DM, coronagraph, cameraPerfect, DM1command, DM2command, simOrLab);
-            Ibroadband(:, :, kWavelength) = I;
-        end
-        figure(101), imagesc(log10(abs(mean(Ibroadband, 3)))), colorbar;
-        caxis([-10, -8]);
-        drawnow
-    else
-        I = getImg(target, DM, coronagraph, cameraPerfect, DM1command, DM2command, simOrLab);
-        figure(101), imagesc(log10(abs(I))), colorbar;
-        caxis([-10, -8]);
-        drawnow
-    end
-    target = targetDrift(target);
-end

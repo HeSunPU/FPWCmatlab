@@ -1,6 +1,8 @@
-function [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data, kWavelength)
-%% The pixel-wise extended Kalman filter estimator
+function [EfocalEst, IincoEst, data] = EKF2(u, image, darkHole, model, estimator, controller, data, kWavelength)
+%% The pixel-wise extended Kalman filter estimator with no non-probe image
 % Developed by He Sun on Feb. 24, 2017
+% Revised by He Sun on Jan. 23, 2019
+% In this revised version, we do not use the image without DM probes
 %
 % EfocalEst - the estimated coherent focal plane electric field
 % IincoEst - the estimated incoherent focal plane intensity
@@ -28,9 +30,9 @@ if estimator.adaptive_exposure
     estimator.observationVarCoefficient = estimator.observationVarCoefficient0 / data.probe_exposure(data.itr)^2;
 end
 %% Extract the images
-Iobserv = zeros(estimator.NumImg + 1, darkHole.pixelNum);
-for k = 1 : estimator.NumImg + 1
-    Iobserv2D = image(:, :, k);
+Iobserv = zeros(estimator.NumImg, darkHole.pixelNum);
+for k = 1 : estimator.NumImg
+    Iobserv2D = image(:, :, k+1);
     Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
 end
 % Compuate the influence caused by probing
@@ -78,35 +80,33 @@ switch controller.whichDM
 end
 % generate the covariance matrices
 %     R = 2 * data.backgroundStd(data.itr)^2 * eye(2);
-temp = zeros(estimator.NumImg+1);
-for k = 2 : estimator.NumImg + 1
+temp = zeros(estimator.NumImg);
+for k = 1 : estimator.NumImg
 %     temp(k, k) = sum(command.^2)* estimator.processVarCoefficient^2;
-%     temp(k, k) = 10 * sum(u(:, k-1).^2)* estimator.processVarCoefficient^2;
-%     temp(k, k) = sum(u(:, k-1).^2)* estimator.observationVarCoefficient2;
-    temp(k, k) = mean(abs(probe(k-1, :)).^2).^2 * estimator.observationVarCoefficient3;
+%     temp(k, k) = 10 * sum(u(:, k).^2)* estimator.processVarCoefficient^2;
+%     temp(k, k) = sum(u(:, k).^2)* estimator.observationVarCoefficient2;
+    temp(k, k) = mean(abs(probe(k, :)).^2).^2 * estimator.observationVarCoefficient3;
 end
 % R = estimator.observationVarCoefficient * eye(estimator.NumImg+1);
-R = estimator.observationVarCoefficient * eye(estimator.NumImg+1) + temp;
+R = estimator.observationVarCoefficient * eye(estimator.NumImg) + temp;
 Q = zeros(3,3);
-% Q(1:2, 1:2) = (sum(command.^2) + 0.3) * estimator.processVarCoefficient * eye(2); % for simulation
 Q(1:2, 1:2) = (sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2); % for simulation
 % Kalman filter for each pixel in the dark holes
 for q = 1 : darkHole.pixelNum
     if kWavelength == 0
         if data.itr == 1
-            Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * data.IincoEst0(q)^2);
-    %         Q(3, 3) = max(estimator.incoherentStd^2, 0.3 * mean(data.IincoEst0.^2));
+%             Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * data.IincoEst0(q)^2);
+            Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * mean(data.IincoEst0.^2));
             xOld = [real(data.EfocalEst0(q)); imag(data.EfocalEst0(q)); data.IincoEst0(q)];
         else
     %         Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * data.IincoEst(q, data.itr-1)^2);
-%             Q(3, 3) = max(estimator.incoherentStd^2, 0.3 * mean(data.IincoEst(:, data.itr-1).^2));
             Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * mean(data.IincoEst(:, data.itr-1).^2));
             xOld = [real(data.EfocalEst(q, data.itr-1)); imag(data.EfocalEst(q, data.itr-1)); data.IincoEst(q, data.itr-1)];
         end
     else
         if data.itr == 1
-            Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * data.IincoEst0(q, kWavelength)^2);
-    %         Q(3, 3) = max(estimator.incoherentStd^2, 0.3 * mean(data.IincoEst0.^2));
+%             Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * data.IincoEst0(q, kWavelength)^2);
+            Q(3, 3) = max(estimator.incoherentStd^2, 0.3 * mean(data.IincoEst0.^2));
             xOld = [real(data.EfocalEst0(q, kWavelength)); imag(data.EfocalEst0(q, kWavelength)); data.IincoEst0(q, kWavelength)];
         else
     %         Q(3, 3) = max(estimator.incoherentStd^2, 0.1 * data.IincoEst(q, data.itr-1)^2);
@@ -118,8 +118,7 @@ for q = 1 : darkHole.pixelNum
     y = Iobserv(:, q);
     % Kalman filter estimation officially starts here
     xPriori = xOld + update; % predict a priori state estimate
-    H = [2 * xPriori(1), 2 * xPriori(2), 1;
-        2 * (xPriori(1) + real(probe(:, q))), 2 * (xPriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the observation matrix is based on the priori state estimate
+    H = [2 * (xPriori(1) + real(probe(:, q))), 2 * (xPriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the observation matrix is based on the priori state estimate
     if data.itr == 1
         temp = zeros(3, 3);
         temp(1, 1) = estimator.stateStd0;
@@ -133,10 +132,9 @@ for q = 1 : darkHole.pixelNum
             Ppriori = data.P(:, :, q, kWavelength, data.itr-1) + Q;
         end
     end
-    hPriori = zeros(estimator.NumImg + 1, 1); % the nonlinear predict observation of the field
-    hPriori(1) = xPriori(1)^2 + xPriori(2)^2 + xPriori(3);
+    hPriori = zeros(estimator.NumImg, 1); % the nonlinear predict observation of the field
     for k = 1 : estimator.NumImg
-        hPriori(k + 1) = (xPriori(1) + real(probe(k, q)))^2 + (xPriori(2) + imag(probe(k, q)))^2 + xPriori(3);
+        hPriori(k) = (xPriori(1) + real(probe(k, q)))^2 + (xPriori(2) + imag(probe(k, q)))^2 + xPriori(3);
     end
     residual = y - hPriori; % compute the measurement residual
     S = H * Ppriori * H' + R; % residual covariance
@@ -145,12 +143,10 @@ for q = 1 : darkHole.pixelNum
     Pposteriori = (eye(3) - K * H) * Ppriori; % update a posteriori estimate covariance
     % Iterate the EKF to make more accurate estimation
     for iEKF = 1 : estimator.itrEKF
-        H = [2 * xPosteriori(1), 2 * xPosteriori(2), 1;
-        2 * (xPosteriori(1) + real(probe(:, q))), 2 * (xPosteriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the new linear observation matrix
-        hPosteriori = zeros(estimator.NumImg + 1, 1); % the nonlinear predict observation of the field
-        hPosteriori(1) = xPosteriori(1)^2 + xPosteriori(2)^2 + xPosteriori(3);
+        H = [2 * (xPosteriori(1) + real(probe(:, q))), 2 * (xPosteriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the new linear observation matrix
+        hPosteriori = zeros(estimator.NumImg, 1); % the nonlinear predict observation of the field
         for k = 1 : estimator.NumImg
-            hPosteriori(k + 1) = (xPosteriori(1) + real(probe(k, q)))^2 + (xPosteriori(2) + imag(probe(k, q)))^2 + xPosteriori(3);
+            hPosteriori(k) = (xPosteriori(1) + real(probe(k, q)))^2 + (xPosteriori(2) + imag(probe(k, q)))^2 + xPosteriori(3);
         end
         S = H * Ppriori * H' + R; % residual covariance
         K = Ppriori * H' / S; % optimal Kalman gain

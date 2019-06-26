@@ -44,7 +44,9 @@ switch target.star
         if strcmpi(coronagraph.type, 'SPLC')
             EfocalStar = propagationSPLC(EinStar, lambda, DM1shape, DM2shape, DM, coronagraph, camera); 
         elseif strcmpi(coronagraph.type, 'SPC')
-            EfocalStar = propagationSPC(EinStar, lambda, DM1shape, DM2shape, DM, coronagraph, camera);   
+            EfocalStar = propagationSPC(EinStar, lambda, DM1shape, DM2shape, DM, coronagraph, camera);
+        elseif strcmpi(coronagraph.type, 'VORTEX')
+            EfocalStar = propagationVORTEX(EinStar, lambda, DM1shape, DM2shape, DM, coronagraph, camera);
         end
     case 0
         EfocalStar = zeros(camera.Neta, camera.Nxi); % the focal plane star field
@@ -69,6 +71,8 @@ switch target.planet
             EfocalPlanet = propagationSPLC(EinPlanet, lambda, DM1shape, DM2shape, DM, coronagraph, camera);
         elseif strcmpi(coronagraph.type, 'SPC')
             EfocalPlanet = propagationSPC(EinPlanet, lambda, DM1shape, DM2shape, DM, coronagraph, camera);
+        elseif strcmpi(coronagraph.type, 'VORTEX')
+            EfocalPlanet = propagationVORTEX(EinPlanet, lambda, DM1shape, DM2shape, DM, coronagraph, camera);
         end
     case 0
         EfocalPlanet = zeros(camera.Neta, camera.Nxi); % the focal plane planet field
@@ -182,4 +186,108 @@ ElyotOut = coronagraph.LyotStop .* ElyotIn;
 out = Fourier(ElyotOut, coronagraph.focalLength, lambda, coronagraph.lyotWidth, coronagraph.lyotWidth,...
     camera.pitch*camera.binXi, camera.Nxi, camera.pitch*camera.binEta, camera.Neta);
 
+end
+
+function out = propagationVORTEX(Ein, lambda, DM1shape, DM2shape, DM, coronagraph, camera)
+%%
+mirrorFactor = 2;
+
+if (coronagraph.error)
+    DM1error = imresize(coronagraph.DM1error, size(DM1shape));
+    DM1shape = DM1shape + DM1error;
+    DM2error = imresize(coronagraph.DM2error, size(DM2shape));
+    DM2shape = DM2shape + DM2error;
+end
+
+
+Ndm = size(DM1shape, 1);
+% DM1phase = exp(2 * 1i * pi * mirrorFactor * DM1shape / lambda); % phase perturbations on DM1, pay attention to the negative sign here
+% DM1phasePad = padarray(DM1phase, [floor(Ndm/2), floor(Ndm/2)]); % pad the field  with zeros
+DM1phasePad = exp(2 * 1i * pi * mirrorFactor * padarray(DM1shape, [floor(Ndm), floor(Ndm)]) / lambda); % phase perturbations on DM1, pay attention to the negative sign here
+
+
+
+NpupilPad = size(DM1phasePad, 1);
+pupilPad = padarray(Ein, floor((NpupilPad-coronagraph.Naperture)/2)*[1, 1]);
+EDM1Pad = pupilPad.*DM1phasePad;
+
+% propagation from DM1 to DM2
+% DM2phase = exp(2 * 1i * pi * mirrorFactor * DM2shape / lambda); % phase perturbations on DM1, pay attention to the negative sign here
+% DM2phasePad = padarray(DM2phase, [floor(Ndm/2), floor(Ndm/2)]); % pad the field  with zeros
+DM2phasePad = exp(2 * 1i * pi * mirrorFactor * padarray(DM2shape, [floor(Ndm), floor(Ndm)]) / lambda); % phase perturbations on DM1, pay attention to the negative sign here
+L = DM.widthDM * NpupilPad / DM.DMmesh(1);
+EDM2Pad = Fresnel(EDM1Pad, lambda, L, DM.zDM1toDM2);
+EDM2Pad = EDM2Pad .* DM2phasePad;
+
+% propagate the field back from DM2 to DM1
+pupilPad2 = Fresnel(EDM2Pad, lambda, L, -DM.zDM1toDM2);
+% apply shape pupil to the field
+% SPerror = imresize(coronagraph.SPerror, coronagraph.Nsp*[1, 1], 'bicubic');
+% EspIn = exp(2 * 1i * pi *  SPerror / lambda) .* pupilPad2(NpupilPad/2+1-coronagraph.Nsp/2: NpupilPad/2+coronagraph.Nsp/2, NpupilPad/2+1-coronagraph.Nsp/2: NpupilPad/2+coronagraph.Nsp/2);
+EspIn = pupilPad2(NpupilPad/2+1-coronagraph.Nsp/2: NpupilPad/2+coronagraph.Nsp/2, NpupilPad/2+1-coronagraph.Nsp/2: NpupilPad/2+coronagraph.Nsp/2);
+EspOut = coronagraph.SPshape .* EspIn;
+
+%%
+EspOut = coronagraph.SPshape;
+EspOut_resize = imresize(EspOut, size(coronagraph.LyotStop));
+ElyotIn = propcustom_mft_Pup2Vortex2Pup(EspOut_resize, 6, 350/2, 0.3, 5);
+ElyotOut = coronagraph.LyotStop .* ElyotIn;
+
+
+% Fourier transform from Lyot plane back to focal plane
+out = Fourier(ElyotOut, coronagraph.focalLength, lambda, coronagraph.lyotWidth, coronagraph.lyotWidth,...
+    camera.pitch*camera.binXi, camera.Nxi, camera.pitch*camera.binEta, camera.Neta);
+
+end
+
+
+function OUT = propcustom_mft_Pup2Vortex2Pup(IN, charge, apRad,  inVal, outVal)
+%% propcustom_mft_Pup2Vortex2Pup Propagates from the input pupil to output pupil
+    D = 2*apRad;
+    lambdaOverD = 4;%samples per lambda/D
+    
+    [NA,~] = size(IN);
+    NB = lambdaOverD*D; 
+    
+    [X,Y] = meshgrid(-NB/2:NB/2-1);
+    RHO = sqrt(X.^2 + Y.^2);
+   
+    windowKnee = 1-inVal/outVal;
+    
+    windowMASK1 = falco_gen_Tukey4vortex( 2*outVal*lambdaOverD, RHO, windowKnee ) ;
+    windowMASK2 = falco_gen_Tukey4vortex( NB, RHO, windowKnee ) ;
+%%
+    % DFT vectors 
+    x = (-NA/2:NA/2-1)/D;
+    u1 = (-NB/2:NB/2-1)/lambdaOverD;
+    u2 = (-NB/2:NB/2-1)*2*outVal/NB;
+    
+    FPM = falco_gen_vortex_mask( charge, NB );
+
+    %%%%%%% Large scale DFT
+    FP1 = 1/(1*D*lambdaOverD)*exp(-1i*2*pi*u1'*x)*IN*exp(-1i*2*pi*x'*u1); 
+    LP1 = 1/(1*D*lambdaOverD)*exp(-1i*2*pi*x'*u1)*(FP1.*FPM.*(1-windowMASK1))*exp(-1i*2*pi*u1'*x);
+
+    %%%%%%% Fine sampled DFT
+    FP2 = 2*outVal/(1*D*NB)*exp(-1i*2*pi*u2'*x)*IN*exp(-1i*2*pi*x'*u2); 
+    FPM = falco_gen_vortex_mask( charge, NB );
+    LP2 = 2*outVal/(1*D*NB)*exp(-1i*2*pi*x'*u2)*(FP2.*FPM.*windowMASK2)*exp(-1i*2*pi*u2'*x);        
+    OUT = LP1 + LP2;
+end
+
+function V = falco_gen_vortex_mask( charge, N )
+    [X,Y] = meshgrid(-N/2:N/2-1);
+    V = exp(1i*charge*atan2(Y,X));
+end
+
+function w = falco_gen_Tukey4vortex( Nwindow, RHO, alpha )
+    %UNTITLED Summary of this function goes here
+    %   Detailed explanation goes here
+
+    Nlut = round(10*Nwindow);
+    p = linspace(-Nwindow/2,Nwindow/2,Nlut);
+%     lut = tukeywindow(Nlut,alpha);
+    lut = tukeywin(Nlut,alpha);
+
+    w = interp1(p,lut,RHO,'linear',0);
 end

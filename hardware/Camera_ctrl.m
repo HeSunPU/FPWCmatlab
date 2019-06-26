@@ -85,7 +85,7 @@ function output = Camera_ctrl(handle, cmd, varargin)
         case 'shutter'
             assert(n_argin==1);
             openflag = cell2mat(varargin(1));
-            if  openflag== 1;
+            if  openflag== 1
                 % Set the camera to manual shutter mode
                 set(handle.camera, 'ManualShutterMode', 1);
                 % Open the shutter as specified
@@ -99,7 +99,7 @@ function output = Camera_ctrl(handle, cmd, varargin)
                 % Set the camera to auto shutter mode
                 set(handle.camera, 'ManualShutterMode', 0);
                 handle.shutter = 0;
-            end;
+            end
             output = handle;
         case 'exposureproperties'
             assert(n_argin==3,'Wrong number of input arguments');

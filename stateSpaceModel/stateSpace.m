@@ -23,34 +23,55 @@ coronagraph.error = 0;
 %% Compute the control Jacobian matrix of DM1 - G1
 disp('Calculating the control Jacobian of DM1 ...');
 G1 = zeros(darkHole.pixelNum, DM.activeActNum);
+G1sq = zeros(darkHole.pixelNum, DM.activeActNum);
 % add small perturbation to each actuator to calculate Jacobian
-if strcmpi(coronagraph.type, 'WFIRST')
-    dVolt = 1.5;
+if strcmpi(coronagraph.type, 'SPLC')
+    dVolt = 1;
+elseif strcmpi(coronagraph.type, 'SPC')
+    dVolt = 1/4;
 else
     dVolt = 1/4;
 end
 
 parfor k = 1 : DM.activeActNum
+    disp(k)
     DM1commandPoke = DM.DM1command;
     DM1commandPoke(k) = DM1commandPoke(k) + dVolt;
     [Epoke, ~, ~] = opticalModel(target, DM.DMperfect, coronagraph.coronagraph_perfect, camera, DM1commandPoke, DM.DM2command);
-    G1(:, k) = (1 / dVolt) * (Epoke(darkHole.pixelIndex) - EnoPoke(darkHole.pixelIndex));
+%     G1(:, k) = (1 / dVolt) * (Epoke(darkHole.pixelIndex) - EnoPoke(darkHole.pixelIndex));
+    [Epoke2, ~, ~] = opticalModel(target, DM.DMperfect, coronagraph.coronagraph_perfect, camera, -DM1commandPoke, DM.DM2command);
+    G1(:, k) = (1 / (2* dVolt)) * (Epoke(darkHole.pixelIndex) - Epoke2(darkHole.pixelIndex));
+    G1sq(:, k) = (1 / (2* dVolt^2)) * (Epoke(darkHole.pixelIndex) + Epoke2(darkHole.pixelIndex) - 2*EnoPoke(darkHole.pixelIndex));
+
 end
 
 %% Compute the control Jacobian matrix of DM2 - G2
 disp('Calculating the control Jacobian of DM2 ...');
 G2 = zeros(darkHole.pixelNum, DM.activeActNum);
+G2sq = zeros(darkHole.pixelNum, DM.activeActNum);
 % add small perturbation to each actuator to calculate Jacobian
-dVolt = 1/4;
+if strcmpi(coronagraph.type, 'SPLC')
+    dVolt = 1;
+elseif strcmpi(coronagraph.type, 'SPC')
+    dVolt = 1/4;
+else
+    dVolt = 1/4;
+end
 parfor k = 1 : DM.activeActNum
+    disp(k)
     DM2commandPoke = DM.DM2command;
     DM2commandPoke(k) = DM2commandPoke(k) + dVolt;
     [Epoke, ~, ~] = opticalModel(target, DM.DMperfect, coronagraph.coronagraph_perfect, camera, DM.DM1command, DM2commandPoke);
-    G2(:, k) = (1 / dVolt) * (Epoke(darkHole.pixelIndex) - EnoPoke(darkHole.pixelIndex));
+%     G2(:, k) = (1 / dVolt) * (Epoke(darkHole.pixelIndex) - EnoPoke(darkHole.pixelIndex));
+    [Epoke2, ~, ~] = opticalModel(target, DM.DMperfect, coronagraph.coronagraph_perfect, camera, DM.DM1command, -DM2commandPoke);
+    G2(:, k) = (1 / (2*dVolt)) * (Epoke(darkHole.pixelIndex) - Epoke2(darkHole.pixelIndex));
+    G2sq(:, k) = (1 / (2* dVolt^2)) * (Epoke(darkHole.pixelIndex) + Epoke2(darkHole.pixelIndex) - 2*EnoPoke(darkHole.pixelIndex));
 end
 
 %%
 model.G1 = G1;
 model.G2 = G2;
+model.G1sq = G1sq;
+model.G2sq = G2sq;
 disp('I am done!');
 end

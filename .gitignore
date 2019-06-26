@@ -1,0 +1,9 @@
+*.asv
+
+*.ini
+*.npy
+*.mat
+*.fig
+*.gif
+*.fits
+dataLibrary/*

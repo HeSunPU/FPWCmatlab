@@ -33,8 +33,8 @@ set(h2,'HWSerialNum', SNv);
 % Start Control 
 h.StartCtrl;
 h2.StartCtrl;
-h.SetStageAxisInfo(0, 0, 30, 0.5, 0.5, 0.5);
-h2.SetStageAxisInfo(0, 0, 30, 0.5, 0.5, 0.5);
+h.SetStageAxisInfo(0, 0, 50, 0.5, 0.5, 0.5);
+h2.SetStageAxisInfo(0, 0, 50, 0.5, 0.5, 0.5);
 % Indentify the device
 h.Identify;
 h2.Identify;

@@ -3,12 +3,12 @@
 % Developed by He Sun on Oct. 2nd
 % 
 clc;
-clear;
+% clear;
 close all;
 
 %% Initialize the system and parameters
 Nitr = 400;%4000; % iterations of control loop
-cRange = [-10, -4]; %[-12, -3];% the range for display
+cRange = [-8, -3]; %[-12, -3];% the range for display
 simOrLab = 'simulation'; % 'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
 runTrial = 1;
 Initialization;

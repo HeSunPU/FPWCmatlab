@@ -8,5 +8,5 @@ function [] = finalizeCamera(camera)
 camera.handle = Camera_ctrl(camera.handle, 'shutter', 0); % close the mechanical shutter
 Camera_ctrl(camera.handle, 'finalize'); % fan off, cooler off and shutter off
 Camera_ctrl(camera.handle, 'disable'); % disconnect the camera from the computer
-
+disp('Camera disconnected.')
 end

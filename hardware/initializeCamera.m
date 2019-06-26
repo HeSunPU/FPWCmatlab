@@ -11,9 +11,14 @@ camera.handle = Camera_ctrl(camera.handle, 'shutter', 1); % open the camera shut
 
 Camera_ctrl(camera.handle, 'exposureproperties', camera.startPosition, camera.imageSize,...
             [camera.binXi, camera.binEta]); % set up camera properties
+disp('Camera connected.')
 if(camera.newDarkFrame) % take new dark frame if needed
-    numIm = 30;
-    camera.darkFrame = takeDarkCam(camera.handle, camera.exposure, numIm, camera.binXi, camera.binEta);
+    mean_std=[500,500];
+    while mean_std(1,2)>6
+        numIm = 30;
+        camera.darkFrame = takeDarkCam(camera.handle, camera.exposure, numIm, camera.binXi, camera.binEta);
+        mean_std = [mean2(camera.darkFrame), std2(camera.darkFrame)]
+    end
 else
     temp = load('darkCam.mat');
     camera.darkFrame = temp.darkCam;

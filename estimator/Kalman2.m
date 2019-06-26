@@ -1,4 +1,4 @@
-function [EfocalEst, IincoEst, data] = Kalman(u, image, darkHole, model, estimator, controller, data, kWavelength)
+function [EfocalEst, IincoEst, data] = Kalman2(u, image, darkHole, model, estimator, controller, data, kWavelength)
 %% The pixel-wise Kalman filter estimator
 % Developed by He Sun on Feb. 24, 2017
 %
@@ -15,64 +15,54 @@ function [EfocalEst, IincoEst, data] = Kalman(u, image, darkHole, model, estimat
 % check number of inputs
 if nargin > 8
     disp('Wrong number of input parameters!!');
-elseif nargin < 8
+else
     kWavelength = 0;
 end
 % assert we do want to use Kalman filter estimator
 % assert(strcmpi(estimator.type, 'kalman'), 'Not using pixel-wise Kalman filter estimator now!');
 % assert we give correct probimg command input
-assert(size(u, 2) == estimator.NumImgPair, 'Not giving correct DM probing commands!');
+assert(size(u, 2) == estimator.NumImg, 'Not giving correct DM probing commands!');
 % assert we give correct number of images
-assert(size(image, 3) == 1 + 2 * estimator.NumImgPair, 'Not giving correct number of images!');
+assert(size(image, 3) == 1 + estimator.NumImg, 'Not giving correct number of images!');
 %% redefine the observation noise coefficient according to exposure noise
 if estimator.adaptive_exposure
     estimator.observationVarCoefficient = estimator.observationVarCoefficient0 / data.probe_exposure(data.itr)^2;
     estimator.observationVarCoefficient1 = estimator.observationVarCoefficient10 / data.probe_exposure(data.itr);
 end
-%% Extract the no poke image
-InoPoke2D = image(:, :, 1);
-InoPoke = InoPoke2D(darkHole.pixelIndex);
-contrast_noProbe = max(mean(InoPoke), 2e-10);
-Iobserv = zeros(2 * estimator.NumImgPair, darkHole.pixelNum);
-
-for k = 1 : 2 * estimator.NumImgPair
-    Iobserv2D = image(:, :, k + 1);
-    Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
-end
-% probeImgContrast = mean(mean(Iobserv));
-% Compute the pair-wise difference images and measured amplitude of probe
-Idiff = zeros(estimator.NumImgPair, darkHole.pixelNum);
-amplitude = zeros(estimator.NumImgPair, darkHole.pixelNum);
-for k = 1 : estimator.NumImgPair 
-    IpositivePoke2D = image(:, :, 2*k);
-    IpositivePoke = IpositivePoke2D(darkHole.pixelIndex); % the image with positive poking
-    InegativePoke2D = image(:, :, 2*k+1);
-    InegativePoke = InegativePoke2D(darkHole.pixelIndex); % the image with negative poking
-    Idiff(k, :) = IpositivePoke - InegativePoke; % difference images
-    amplitudeSquare = (IpositivePoke + InegativePoke) /2 - InoPoke;
-    amplitudeSquare(amplitudeSquare<0) = 0;
-    amplitude(k, :) = sqrt(amplitudeSquare);
-end
-% Compuate the influence caused by probing
+%% Compuate the influence caused by probing
 switch estimator.whichDM
     case '1'
         G = model.G1;
     case '2'
         G = model.G2;
+    case 'both'
+        G = [model.G1, model.G2];
     otherwise
         disp('We only have DM 1, 2 or both for probing!');
         return;
 end
-probe = zeros(estimator.NumImgPair, darkHole.pixelNum);
-for k = 1 : estimator.NumImgPair
+probe = zeros(estimator.NumImg, darkHole.pixelNum);
+for k = 1 : estimator.NumImg
     probe(k, :) = transpose(G * u(:, k));
 end
-% combine the phase information from model and amplitude information from
-% measurement
-if estimator.measuredAmp
-    phase = atan2(imag(probe), real(probe));
-    probe = amplitude .* (cos(phase) + 1i * sin(phase));
+% Extract the no poke image
+InoPoke2D = image(:, :, 1);
+InoPoke = InoPoke2D(darkHole.pixelIndex);
+contrast_noProbe = max(mean(InoPoke), 2e-10);
+Iobserv = zeros(estimator.NumImg, darkHole.pixelNum);
+for k = 1 : estimator.NumImg
+    Iobserv2D = image(:, :, k + 1);
+    Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
 end
+% Compute the pair-wise difference images and measured amplitude of probe
+Idiff = zeros(estimator.NumImg, darkHole.pixelNum);
+for k = 1 : estimator.NumImg
+    IpositivePoke2D = image(:, :, k+1);
+    IpositivePoke = IpositivePoke2D(darkHole.pixelIndex); % the image with positive poking
+    Idiff(k, :) = IpositivePoke - InoPoke - abs(probe(k, :)').^2; % difference images
+end
+%%
+
 EfocalEst = zeros(darkHole.pixelNum, 1);
 IincoEst = zeros(darkHole.pixelNum, 1);
 
@@ -98,24 +88,22 @@ switch controller.whichDM
 end
 
 % generate the covariance matrices
-% temp = zeros(estimator.NumImgPair);
-% for k = 1 : estimator.NumImgPair
+% temp = zeros(estimator.NumImg);
+% for k = 1 : estimator.NumImg
 % %     temp(k, k) = sum(command.^2)* estimator.processVarCoefficient^2;
-% %     temp(k, k) = 10 * sum(u(:, k-1).^2)* estimator.processVarCoefficient^2;
+% %     temp(k, k) = 10 * sum(u(:, k).^2)* estimator.processVarCoefficient^2;
 % %     temp(k, k) = sum(u(:, k).^2)* estimator.observationVarCoefficient2;
 %     temp(k, k) = mean(abs(probe(k, :)).^2).^2 * estimator.observationVarCoefficient3;
 % end
-% temp = mean(mean(abs(Iobserv)))^2 * estimator.observationVarCoefficient3 * eye(estimator.NumImgPair);
-% temp = mean(mean(abs(probe).^2))^2 * estimator.observationVarCoefficient3 * eye(estimator.NumImgPair);
-% R = 2 * (estimator.observationVarCoefficient * eye(estimator.NumImgPair) + temp);
+% temp = mean(mean(abs(Iobserv)))^2 * estimator.observationVarCoefficient3 * eye(estimator.NumImg);
+% temp = mean(mean(abs(probe).^2))^2 * estimator.observationVarCoefficient3 * eye(estimator.NumImg);
+% R = 2 * (estimator.observationVarCoefficient * eye(estimator.NumImg)+temp);
 
-temp = (contrast_noProbe^2 + mean(mean(abs(probe).^2))^2 + 6*contrast_noProbe*mean(mean(abs(probe).^2))) * estimator.observationVarCoefficient3 * eye(estimator.NumImgPair);
-R = 2 * ((estimator.observationVarCoefficient + estimator.observationVarCoefficient1 * (contrast_noProbe+mean(mean(abs(probe).^2)))) * eye(estimator.NumImgPair) + temp);
-% R = 2 * ((estimator.observationVarCoefficient + estimator.observationVarCoefficient1 * probeImgContrast) * eye(estimator.NumImgPair) + temp);
+temp = (contrast_noProbe+mean(mean(abs(probe).^2)))^2 * estimator.observationVarCoefficient3 * eye(estimator.NumImg);
+% R = 2 * ((estimator.observationVarCoefficient + estimator.observationVarCoefficient1 * (contrast_noProbe+mean(mean(abs(probe).^2)))) * eye(estimator.NumImgPair) + temp);
+R = ((2 * estimator.observationVarCoefficient + estimator.observationVarCoefficient1 * (2 * contrast_noProbe+mean(mean(abs(probe).^2)))) * eye(estimator.NumImg) + temp);
+
 Q = (sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2);
-% R = 2 * estimator.observationVarCoefficient * eye(estimator.NumImgPair);
-% Q = (sum(command.^2) + 0.3) * estimator.processVarCoefficient * eye(2);
-
 % Q = estimator.processVarCoefficient * eye(2);
 % Kalman filter for each pixel in the dark holes
 for q = 1 : darkHole.pixelNum
@@ -133,7 +121,7 @@ for q = 1 : darkHole.pixelNum
         end
     end
     y = Idiff(:, q);
-    H = 4 * [real(probe(:, q)), imag(probe(:, q))];
+    H = 2 * [real(probe(:, q)), imag(probe(:, q))];
     update = [real(G(q, :)); imag(G(q, :))] * command; % the linear update of the state
     % Kalman filter estimation officially starts here
     xPriori = xOld + update; % predict a priori state estimate

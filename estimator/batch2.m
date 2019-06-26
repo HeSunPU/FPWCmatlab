@@ -1,4 +1,4 @@
-function [EfocalEst, IincoEst, data] = batch(u, image, darkHole, model, estimator, data, kWavelength)
+function [EfocalEst, IincoEst, data] = batch2(u, image, darkHole, model, estimator, data, kWavelength)
 %%
 % The pair-wise batch process estimator
 % Developed by He Sun on Feb. 17, 2017
@@ -17,28 +17,13 @@ if nargin > 7
 elseif nargin < 7
     kWavelength = 0;
 end
+%%
 % assert we do want to use batch process estimator
 % assert(strcmpi(estimator.type, 'batch'), 'Not using batch process estimator now!');
 % assert we give correct probimg command input
-assert(size(u, 2) == estimator.NumImgPair, 'Not giving correct DM probing commands!');
+assert(size(u, 2) == estimator.NumImg, 'Not giving correct DM probing commands!');
 % assert we give correct number of images
-assert(size(image, 3) == 1 + 2 * estimator.NumImgPair, 'Not giving correct number of images!');
-% Extract the no poke image
-InoPoke2D = image(:, :, 1);
-InoPoke = InoPoke2D(darkHole.pixelIndex);
-% Compute the pair-wise difference images and measured amplitude of probe
-Idiff = zeros(estimator.NumImgPair, darkHole.pixelNum);
-amplitude = zeros(estimator.NumImgPair, darkHole.pixelNum);
-for k = 1 : estimator.NumImgPair 
-    IpositivePoke2D = image(:, :, 2*k);
-    IpositivePoke = IpositivePoke2D(darkHole.pixelIndex); % the image with positive poking
-    InegativePoke2D = image(:, :, 2*k+1);
-    InegativePoke = InegativePoke2D(darkHole.pixelIndex); % the image with negative poking
-    Idiff(k, :) = IpositivePoke - InegativePoke; % difference images
-    amplitudeSquare = (IpositivePoke + InegativePoke) /2 - InoPoke;
-    amplitudeSquare(amplitudeSquare<0) = 0;
-    amplitude(k, :) = sqrt(amplitudeSquare);
-end
+assert(size(image, 3) == 1 + estimator.NumImg, 'Not giving correct number of images!');
 % Compuate the influence caused by probing
 switch estimator.whichDM
     case '1'
@@ -49,29 +34,34 @@ switch estimator.whichDM
         disp('We only have DM 1 or 2 for probing!');
         return;
 end
-probe = zeros(estimator.NumImgPair, darkHole.pixelNum);
-for k = 1 : estimator.NumImgPair
+probe = zeros(estimator.NumImg, darkHole.pixelNum);
+for k = 1 : estimator.NumImg
     probe(k, :) = transpose(G * u(:, k));
 end
-% combine the phase information from model and amplitude information from
-% measurement
-if estimator.measuredAmp
-    phase = atan2(imag(probe), real(probe));
-    probe = amplitude .* (cos(phase) + 1i * sin(phase));
+% Extract the no poke image
+InoPoke2D = image(:, :, 1);
+InoPoke = InoPoke2D(darkHole.pixelIndex);
+% Compute the pair-wise difference images and measured amplitude of probe
+Idiff = zeros(estimator.NumImg, darkHole.pixelNum);
+for k = 1 : estimator.NumImg
+    IpositivePoke2D = image(:, :, k+1);
+    IpositivePoke = IpositivePoke2D(darkHole.pixelIndex); % the image with positive poking
+    Idiff(k, :) = IpositivePoke - InoPoke - abs(probe(k, :)').^2; % difference images
 end
+
 % conduct least square regression for each pixel
 EfocalEst = zeros(darkHole.pixelNum, 1);
 IincoEst = zeros(darkHole.pixelNum, 1);
 if data.itr >= 0
 %     R = 2 * data.backgroundStd(data.itr)^2 * eye(estimator.NumImgPair);
 % else
-    R = 2 * 3e-13 * eye(estimator.NumImgPair);
+    R = 2 * 3e-13 * eye(estimator.NumImg);
 end
 %%
 for q = 1 : darkHole.pixelNum
     %%
     y = Idiff(:, q);
-    H = 4 * [real(probe(:, q)), imag(probe(:, q))];
+    H = 2 * [real(probe(:, q)), imag(probe(:, q))];
     Hinv = pinv(H);
     x = Hinv * y;
     EfocalEst(q) = x(1) + 1i * x(2);

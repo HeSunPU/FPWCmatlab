@@ -43,7 +43,7 @@ end
 [~, ~, I] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command);
 % I = imtranslate(I, 1*[rand(1), rand(1)]); % shift the images to simulate
 % telescople jittering
-if ~(strcmpi(coronagraph.type, 'SPLC'))
+if (strcmpi(coronagraph.type, 'SPC'))
     I = I .* coronagraph.FPMmask;
 end
 
@@ -51,8 +51,8 @@ end
 if camera.noise == 1
     readoutNoise = camera.readoutstd * randn(size(I));
     Iphoton = I * target.flux * camera.exposure;
-%     Iphoton = poissrnd(Iphoton) + readoutNoise;
-    Iphoton = Iphoton + readoutNoise;
+    Iphoton = poissrnd(Iphoton) + readoutNoise;
+%     Iphoton = Iphoton + readoutNoise;
 %     I = float(Iphoton) / (target.flux * camera.exposure);
 %     I = I + readoutNoise/(target.flux * camera.exposure);
 %     Iphoton = ceil(Iphoton);

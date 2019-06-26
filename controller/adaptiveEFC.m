@@ -6,7 +6,7 @@ function controller = adaptiveEFC(x, G, target, DM, coronagraph, camera, darkHol
 % command - the control command of the DM
 % G - the overall control Jacobian matrix
 
-alpha = 10.^(-10:-0.5:-8);
+alpha = 10.^(-7:0.5:-4);
 contrast = zeros(length(alpha), 1);
 DM1command0 = DM1command;
 DM2command0 = DM2command;

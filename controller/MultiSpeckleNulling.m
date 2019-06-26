@@ -155,7 +155,7 @@ for ks = 1 : length(row)
 end
 optimalOffset = mod((1.5*pi-theta), 2*pi);
 probeDM = controlShape(coronagraph, XS, YS, optimalOffset, amp, positionEta, positionXi);
-command = height2voltage(0.4*probeDM, DM, controller.whichDM, Nitr);
+command = height2voltage(0.1*probeDM, DM, controller.whichDM, Nitr);
 % Itest = getImg(target, DM, coronagraph, camera, DM1command + command, DM2command, simOrLab);
 % mean(Itest(darkHole.pixelIndex))
 
