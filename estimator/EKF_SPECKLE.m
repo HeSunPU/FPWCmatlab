@@ -1,6 +1,7 @@
-function [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data, kWavelength)
+function [EfocalEst, IincoEst, data] = EKF_SPECKLE(u, image, darkHole, model, estimator, controller, data, kWavelength)
 %% The pixel-wise extended Kalman filter estimator
 % Developed by He Sun on Feb. 24, 2017
+% Updated by Susan Fowler Redmond on June 24, 2019
 %
 % EfocalEst - the estimated coherent focal plane electric field
 % IincoEst - the estimated incoherent focal plane intensity
@@ -45,13 +46,13 @@ switch estimator.whichDM
 end
 probe = zeros(estimator.NumImg, darkHole.pixelNum);
 for k = 1 : estimator.NumImg
-    probe(k, :) = transpose(G * u(:, k));
+    probe(k, :) = transpose(G * u(:, k)); % Gu in python code
 end
 %% combine the phase information from model and amplitude information from
 % measurement
 if estimator.measuredAmp
     phase = atan2(imag(probe), real(probe));
-    probe = amplitude .* (cos(phase) + 1i * sin(phase));
+    probe = amplitude .* (cos(phase) + 1i * sin(phase)); %probe overwritten here?
 end
 EfocalEst = zeros(darkHole.pixelNum, 1);
 IincoEst = zeros(darkHole.pixelNum, 1);
@@ -90,6 +91,8 @@ R = estimator.observationVarCoefficient * eye(estimator.NumImg+1) + temp;
 Q = zeros(3,3);
 % Q(1:2, 1:2) = (sum(command.^2) + 0.3) * estimator.processVarCoefficient * eye(2); % for simulation
 Q(1:2, 1:2) = (sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2); % for simulation
+
+%% Filter.update() in python code
 % Kalman filter for each pixel in the dark holes
 for q = 1 : darkHole.pixelNum
     if kWavelength == 0
@@ -114,16 +117,21 @@ for q = 1 : darkHole.pixelNum
             xOld = [real(data.EfocalEst(q, kWavelength, data.itr-1)); imag(data.EfocalEst(q, kWavelength, data.itr-1)); data.IincoEst(q, kWavelength, data.itr-1)];
         end
     end
+%     Python version:
+%     E_hat = complex(self.x_hat[0] + Gu[self.index], self.x_hat[1] + Gu[self.index+G.shape[0]//2]) #closed loop electric field estimate (open loop field + Jacobian * controls)
+%     z_hat = abs(E_hat)**2 + dark_curr*scale # intensity estimate
+%     z = I[self.index] # intensity measurement
+
     update = [[real(G(q, :)); imag(G(q, :))] * command; 0]; % the linear update of the state
     y = Iobserv(:, q);
-%     H = [2*Gu[self.index] + 2*self.x_hat[0], 2*Gu[self.index+G.shape[0]//2] + 2*self.x_hat[1]] #observation equation linearization
 
     
     % Kalman filter estimation officially starts here
     xPriori = xOld + update; % predict a priori state estimate
     H = [2 * xPriori(1), 2 * xPriori(2), 1;
         2 * (xPriori(1) + real(probe(:, q))), 2 * (xPriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the observation matrix is based on the priori state estimate
-    
+%     H = [2*Gu[self.index] + 2*self.x_hat[0], 2*Gu[self.index+G.shape[0]//2] + 2*self.x_hat[1]] #observation equation linearization
+
     if data.itr == 1
         temp = zeros(3, 3);
         temp(1, 1) = estimator.stateStd0;
@@ -143,8 +151,8 @@ for q = 1 : darkHole.pixelNum
         hPriori(k + 1) = (xPriori(1) + real(probe(k, q)))^2 + (xPriori(2) + imag(probe(k, q)))^2 + xPriori(3);
     end
     residual = y - hPriori; % compute the measurement residual
-    S = H * Ppriori * H' + R; % residual covariance
-    K = Ppriori * H' / S; % optimal Kalman gain
+    S = H * Ppriori * H' + R; % residual covariance ||   S = self.P.dot(H).dot(H) + (dark_curr*scale)**2
+    K = Ppriori * H' / S; % optimal Kalman gain ||    K = self.P.dot(H)/S
     xPosteriori = xPriori + K * residual; % update a posteriori state estimate
     Pposteriori = (eye(3) - K * H) * Ppriori; % update a posteriori estimate covariance
     % Iterate the EKF to make more accurate estimation

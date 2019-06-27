@@ -115,6 +115,8 @@ end
 
 
 
+%% add switch case for no probe
+
 %% choose the probe contrast
 % if contrastEst <= 0 % if we currently do not have efficient estimation of contrast, for example the first iteration
 %     contrastEst = contrastMeasured;

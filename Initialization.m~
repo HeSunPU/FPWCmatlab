@@ -100,7 +100,7 @@ DM.DMperfect.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact);%5.06e-9 * ones(DM.Nact,
 DM.DMperfect.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact);%6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
 
 %% Initialize the coronagraph instrument layout
-coronagraph.type = 'SPC';%'VORTEX';%'SPC';%'SPLC';%
+coronagraph.type = 'VORTEX';%'SPC';%'SPLC';%
 
 if strcmpi(coronagraph.type, 'SPC') % 'Shaped pupil coroangraph'
     coronagraph.SPwidth = 0.01; % width of shaped pupil mask in meters
@@ -215,11 +215,7 @@ target.separation = 8; % Unit: Wavelength / Diameter (lambda / D)
 target.normalization = 220.6292;%147.1332 for lab simulation; %1; % normalization factor for simulated images
 target.flux = 1.5474e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
 
-% sfr added
-target.driftDM = '0';%'1'; %which DM is used to introduce the speckle drift
-% target.driftcmd = zeros(DM.activeActNum,Nitr);
-
-%
+target.driftDM = '1'; %which DM is used to int
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
 target.NdriftMode = 18;
 target.driftCoef = zeros(target.NdriftMode, 1); % the coefficient for each drift mode
@@ -491,8 +487,6 @@ if estimator.activeSensing
     estimator.rate = 1e-3;%1e-3;%5e-2;%5e-2; %5e-2 for probe scale optimization, 1e1 for probe command optimization
     estimator.sgd_itr = 200;
 end
-%sfr added
-estimator.ditherStd = 2e-4 ;
 %% Initialize the linear system identification algorithm
 train.switch = 0; % 1 stands for online EM-algorithm is on, otherwise it is 'off'
 if train.switch == 1
@@ -669,6 +663,3 @@ data.probe_exposure = zeros(Nitr, 1);
 if strcmpi(simOrLab, 'simulation')
     data.EfocalPerfect = zeros(darkHole.pixelNum, Nitr);
 end
-
-data.Driftcommand = zeros(DM.activeActNum,Nitr);
-data.Dithercommand = zeros(2*DM.activeActNum,Nitr);
