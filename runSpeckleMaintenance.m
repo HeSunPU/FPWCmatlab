@@ -7,6 +7,7 @@ Nitr = 5;
 DM1command = data.DMcommand(:,1);
 DM2command = data.DMcommand(:,2);
 
+data_DH = data;
 clear data
 % save drift DM command as a different variable
 DM1command_DH = DM1command;
@@ -106,23 +107,22 @@ for itr = 1 : Nitr
     end
     
 %% Introducing Drift
+    % may need to edit first couple lines here if different coronograph is used 
+    marginWidth = (coronagraph.SPwidth - DM.widthDM)/2;
+    marginNpixel = round(marginWidth / coronagraph.SPwidth * DM.DMmesh(1));
     
-%     command_drift = 2*2*pi*1e-11/target.starWavelength*(rand([DM.activeActNum,1])-0.5); %THIS IS DRIFT COMMAND
-%     command_drift = 0.2e-10*(rand([DM.activeActNum,1])-0.5); %THIS IS DRIFT WRT FIELD, 0.2A to m
     surf_drift = zeros(DM.DMmesh);
-    surf_drift(DM.activeActIndex) = 0.2e-10*(rand([DM.activeActNum,1])-0.5);
+    surf_drift(marginNpixel+1 : end-marginNpixel, marginNpixel+1 : end-marginNpixel) = ...
+        surf_disp*(rand([DM.DMmesh - 2 * marginNpixel,1])-0.5);
+        
     command_drift = height2voltage(surf_drift, DM, target.driftDM, 5);
-    
+
     switch target.driftDM % determine DM that will introduce drift and update command, this command DOES NOT get stored in "command"
         case '1'
-            G1_real = real(model.G1);
-%             DM1command = DM1command + command_drift./G1_real(DM.activeActIndex);% command; needs to be random
             DM1command = DM1command + command_drift;% command; needs to be random
             data.Driftcommand(:,iter) = [DM1command; zeros(size(DM1command))];
         case '2'
-            G2_real = real(model.G2);
             DM2command = DM2command + command_drift;% command;
-%             DM2command = DM2command + command_drift./G2_real(DM.activeActIndex);% command;        
             data.Driftcommand(:,iter) = [zeros(size(DM2command));DM2command];
         otherwise
             disp('You can only use the first DM or second DM for speckle drift.');

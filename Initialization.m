@@ -218,7 +218,7 @@ target.flux = 1.5474e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229
 % sfr added
 target.driftDM = '1';%'1'; %which DM is used to introduce the speckle drift
 % target.driftcmd = zeros(DM.activeActNum,Nitr);
-
+target.driftDisp = 1.2e-9; % max drift disp on mirror face in m
 %
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
 target.NdriftMode = 18;
