@@ -23,17 +23,33 @@ end
 % assert(strcmpi(estimator.type, 'EKF'), 'Not using pixel-wise EKF estimator now!');
 % assert we give correct probimg command input
 assert(size(u, 2) == estimator.NumImg, 'Not giving correct DM probing commands!');
+
 % assert we give correct number of images
-assert(size(image, 3) == 1 + estimator.NumImg, 'Not giving correct number of images!');
+% sfr added case 
+switch lower(estimator.type)
+    case 'ekf_speckle'
+        assert(size(image, 3) == estimator.NumImg, 'Not giving correct number of images!');        
+    otherwise
+        assert(size(image, 3) == 1 + estimator.NumImg, 'Not giving correct number of images!');
+end
 %% redefine the observation noise coefficient according to exposure noise
 if estimator.adaptive_exposure
     estimator.observationVarCoefficient = estimator.observationVarCoefficient0 / data.probe_exposure(data.itr)^2;
 end
 %% Extract the images
-Iobserv = zeros(estimator.NumImg, darkHole.pixelNum);
-for k = 1 : estimator.NumImg
-    Iobserv2D = image(:, :, k+1);
-    Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
+switch lower(estimator.type) %added by sfr
+    case 'ekf_speckle'
+        Iobserv = zeros(estimator.NumImg, darkHole.pixelNum);
+        for k = 1 : estimator.NumImg
+            Iobserv2D = zeros(size(image));%(:, :, k);
+            Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
+        end
+    otherwise
+        Iobserv = zeros(estimator.NumImg, darkHole.pixelNum);
+        for k = 1 : estimator.NumImg
+            Iobserv2D = image(:, :, k+1);
+            Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
+        end
 end
 % Compuate the influence caused by probing
 switch estimator.whichDM
@@ -71,7 +87,7 @@ switch controller.whichDM
         command = command(1 : length(command)/2);
     case '2'
         G = model.G2;
-        command = command(length(command)/2 + 1, length(command));
+        command = command(length(command)/2 + 1: length(command)); % SUSAN CHANGED THIS command = command(length(command)/2 + 1, length(command));
     case 'both'
         G = [model.G1, model.G2];
     otherwise
@@ -157,6 +173,7 @@ for q = 1 : darkHole.pixelNum
     % save the data
     EfocalEst(q) = xPosteriori(1) + 1i * xPosteriori(2);
     IincoEst(q) = xPosteriori(3);
+
     if kWavelength == 0
         data.P(:, :, q, data.itr) = Pposteriori;
         data.y(:, :, data.itr) = Iobserv';

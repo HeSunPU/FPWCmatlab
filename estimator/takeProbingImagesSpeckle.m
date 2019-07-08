@@ -1,4 +1,4 @@
-function [image, u, data] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data)
+function [image, u, data] = takeProbingImagesSpeckle(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data)
 % Probe one DM and take probing images
 % Developed by He Sun on Feb. 22, 2017, revised from A. J. Riggs's
 % "hcil_makeProbeSurf.m" file

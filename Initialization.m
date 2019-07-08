@@ -218,8 +218,9 @@ target.flux = 1.5474e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229
 % sfr added
 target.driftDM = '1';%'1'; %which DM is used to introduce the speckle drift
 % target.driftcmd = zeros(DM.activeActNum,Nitr);
-target.driftDisp = 1.2e-9; % max drift disp on mirror face in m
-%
+% target.driftDisp = 1.2e-9; % max drift disp on mirror face in m
+target.driftDisp = 1.2e-8; % max drift disp on mirror face in m
+
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
 target.NdriftMode = 18;
 target.driftCoef = zeros(target.NdriftMode, 1); % the coefficient for each drift mode
@@ -351,7 +352,7 @@ if strcmpi(coronagraph.type, 'SPC')
 end
 %% Initialize the dark hole region
 darkHole.type = 'wedge';%'box';%'circ';% % the type(shape) of the dark hole regions - 'wedge' or 'box' or 'circ'
-darkHole.side = 'LR';%'R';% % the side where dark holes located - 'L', 'R' or 'LR'
+darkHole.side = 'L';%'R';% % the side where dark holes located - 'L', 'R' or 'LR'
 darkHole.rangeX = [7, 10]; % used for 'box' dark hole only, unit - f * lambda / D
 darkHole.rangeY = [-3, 3]; % used for 'box' dark hole only, unit - f * lambda / D
 if strcmpi(coronagraph.type, 'SPC')
@@ -370,8 +371,8 @@ darkHole.pixelIndex = find(darkHole.mask(:) == 1); % the pixel indices in the da
 darkHole.pixelNum = length(darkHole.pixelIndex); % the number of pixels in the dark holes
 
 %% Initialize the controllers
-controller.type = 'EFC';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
-controller.whichDM = 'both';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
+controller.type = 'efc';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
+controller.whichDM = '2';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
 if strcmpi(controller.type, 'EFC')
     controller.alpha = 3e-5;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
     controller.lineSearch = 0; % 1 stands for add constraint that enforces the target contrast larger than estimation covariance
@@ -433,14 +434,14 @@ end
 % controller.linearControllerType = 'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin'; %'energyMin';
 
 %% Initialize the estimators
-estimator.type = 'batch';%'EKF';%'Kalman';%%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
-estimator.whichDM = '1';%'both';% % which DM we use for probing, '1', '2' or 'both'
+estimator.type = 'ekf_speckle';%'batch';%'EKF';%'Kalman';%%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
+estimator.whichDM = '2';%'both';% % which DM we use for probing, '1', '2' or 'both'
 estimator.NumImgPair = 2; % Used when EKFpairProbing is 1
-estimator.NumImg = 4; % Used when EKFpairProbing is 0
+estimator.NumImg = 1;%4; % Used when EKFpairProbing is 0
 estimator.linearProbe = 1;%1; % 1 stands for only considering the linear part of DM probing, 0 stands for simulating the probing which include all the terms
 estimator.nonProbeImage = 0;
 estimator.EKFpairProbing = 1; % 1 stands for still using pair-wise probing, 0 stands for not
-estimator.EKFincoherent = 0; % 1 stands for estimating incoherent in EKF, 0 stands for assuming no incoherent light
+estimator.EKFincoherent = 1; % 1 stands for estimating incoherent in EKF, 0 stands for assuming no incoherent light
 estimator.optimized_probe = 0;
 estimator.itrEKF = 10;%10;%10;%3; % Used for 'EKF' only, IEKF iterations to make more accurate estimation
 estimator.itrUKF = 10;%10; % Used for 'UKF' only, which has similar formula to IEKF
@@ -608,7 +609,7 @@ elseif strcmpi(controller.type, 'EFC')
         data.backgroundAverage = zeros(Nitr, 1); % the average contrast of background
         data.backgroundStd = zeros(Nitr, 1); % the std deviation of the backgroud
         data.probeContrast = zeros(Nitr, 1); % the probe contrast
-        if strcmpi(estimator.type, 'ekf')% && ~estimator.EKFpairProbing
+        if strcmpi(estimator.type, 'ekf') || strcmpi(estimator.type, 'ekf_speckle')% && ~estimator.EKFpairProbing  SUSAN CHANGED THIS ****************************
             if estimator.nonProbeImage
                 data.y = zeros(darkHole.pixelNum, estimator.NumImg+1, Nitr);
             else
@@ -639,7 +640,7 @@ elseif strcmpi(controller.type, 'EFC')
                         data.uProbe = zeros(DM.activeActNum, estimator.NumImg, Nitr); % the probe shapes
                     end
                 end
-            case {'ekf', 'ukf'}
+            case {'ekf', 'ukf', 'ekf_speckle'} %SUSAN ADDED THIS*******************************************
                 if estimator.EKFincoherent
                     data.P = zeros(3, 3, darkHole.pixelNum, Nitr);
                 else
@@ -670,5 +671,6 @@ if strcmpi(simOrLab, 'simulation')
     data.EfocalPerfect = zeros(darkHole.pixelNum, Nitr);
 end
 
-data.Driftcommand = zeros(DM.activeActNum,Nitr);
+data.Driftcommand = zeros(2*DM.activeActNum,Nitr);
 data.Dithercommand = zeros(2*DM.activeActNum,Nitr);
+data.estOpenLoopContrast = zeros(Nitr, 1);
