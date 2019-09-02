@@ -79,7 +79,7 @@ camera.handle = Camera_ctrl(camera.handle, 'shutter', 0);
 pause(.5) % wait for shutter to close
 % for k = 1 : 30
 numIm = 30;
-camera.exposure = 0.1;
+camera.exposure = 10;%0.1;
 camera.fastReadout = 0;
 darkCam = takeImg(camera.handle, numIm, camera.exposure, [0,0], [500, 500], [4, 4]);
 figure, imagesc(darkCam), colorbar
@@ -89,8 +89,8 @@ mean_std = [mean2(darkCam), std2(darkCam)]
 %% Take test image - set up binning and take test image
 camera.handle = Camera_ctrl(camera.handle, 'shutter', 1);
 darkCam = camera.darkFrame;
-numIm = 10;
-camera.exposure = 0.1;%0.0001;%
+numIm = 1;
+camera.exposure = 3e-3;%0.1;%0.002;%1;%0.0001;%0.1;%
 img = takeImg(camera.handle, numIm, camera.exposure, [0,0], [500, 500], [4, 4]);
 IntIm = rot90(img,1);
 % figure, imagesc(abs(double(rot90(img,1)))), colorbar;

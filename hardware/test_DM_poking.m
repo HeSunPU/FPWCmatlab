@@ -257,9 +257,22 @@ sineWave = ones(34,34);
 % sineWave(:,2:4:end) =  1;
 % sineWave(:,3:4:end) = 0;
 % sineWave(:,4:4:end) =  -1;
-sineWave(:,1:2:end) = -1;
 %sineWave(:,1:2:end) = -1;
 %sineWave(1:2:end,:) = -1;
+
+sineWave(:,1:4:end) = -1;
+sineWave(:,2:4:end) = -1;
+
+% sineWave(:,5:8:end) = -1;
+% sineWave(:,6:8:end) = -1;
+% sineWave(:,7:8:end) = -1;
+% sineWave(:,8:8:end) = -1;
+
+% sineWave(5:8:end, :) = -1;
+% sineWave(6:8:end, :) = -1;
+% sineWave(7:8:end, :) = -1;
+% sineWave(8:8:end, :) = -1;
+
 dDM2Vplus = 10*[dm_2Dto1D(sineWave); zeros(1024-952,1)];
 dDM2Vminus = 10*[dm_2Dto1D(sineWave); zeros(1024-952,1)];
 % v1flat = load('C:\BostonMicromachines v5.2\Flatmap Data for Princeton\C25CW003#010_CLOSED_LOOP_200nm_VOLTAGES.txt','-ascii');

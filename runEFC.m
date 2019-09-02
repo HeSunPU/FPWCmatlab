@@ -6,7 +6,7 @@ close all;
 %% Initialize the system and parameters
 Nitr = 20;%4000; % iterations of control loop
 cRange = [-8, -4]; %[-12, -3];% the range for display
-simOrLab = 'simulation';%'lab';%  'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
+simOrLab = 'lab';%'simulation';%  'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
 runTrial = 1;
 Initialization;
 

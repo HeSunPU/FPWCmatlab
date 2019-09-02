@@ -27,7 +27,7 @@ switch lower(computerID)
         folder.controller = 'C:\Lab\FPWCmatlab\controller';
         folder.estimator = 'C:\Lab\FPWCmatlab\estimator';
         folder.hardware = 'C:\Lab\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20190621';
+        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20190731';
         folder.LOWFS = 'C:\Lab\FPWCmatlab\LOWFS';
         folder.python = 'C:\Lab\FPWCpy\active_estimation';
     case 'hesunlaptop'
@@ -90,7 +90,7 @@ DM.DMperfect.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact);%5.06e-9 * ones(DM.Nact,
 DM.DMperfect.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact);%6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
 
 %% Initialize the coronagraph instrument layout
-coronagraph.type = 'VORTEX';%'SPC';%'SPLC';%
+coronagraph.type = 'SPC';%'VORTEX';%'SPLC';%
 
 if strcmpi(coronagraph.type, 'SPC') % 'Shaped pupil coroangraph'
     coronagraph.SPwidth = 0.01; % width of shaped pupil mask in meters
@@ -177,11 +177,11 @@ camera.visionEta = [-10, 10]; % field of vision in vertical direction, defined b
 camera.Nxi = 99;%81;%%99 for HCIL experiment;
 camera.Neta = 83;%31;%%83 for HCIL experiment;
 camera.stacking = 1; % number of image for stacking
-camera.exposure = 1; % exposure time in seconds for one image
-camera.exposure0 = 1; % the exposure time used for non-probe image
+camera.exposure = 0.1; % exposure time in seconds for one image
+camera.exposure0 = 0.1; % the exposure time used for non-probe image
 camera.newDarkFrame = 1; % 1 for taking new dark frame, 0 for using existed dark frame
 camera.centerLabView = [273, 293]; % only works for same binning, [500-x, y]
-camera.center = [186, 294];%[193, 295];%[196, 320];%[199,321];% [210, 290];%[214, 288];%[206, 253];%[196, 262];%[196, 263];%[198, 263];%[205, 266];%[209, 286];%[217, 295];%[163, 234];%[167, 278];%[171, 300];%[140, 282];%[138, 287];%[140, 286];%[130,296];%[135, 302];%[112, 308];%[113, 310];%[113, 304];%[114, 303];%[112, 302];%[113, 302];%[113, 304];%[117, 302];%[118, 301];%[140, 264];%[142, 264];%[279, 243];%[280, 243];%[277, 248];%[250, 264];%[249, 285];%[250, 284];%[245, 281];%[245, 280];%[227,295];%[227,293];%[176, 314];%[254, 303];%[253, 303];%[252, 302];%[253, 303];%[252, 302];%[253, 303];%[253, 304];%[255, 305];%[254, 304];%[256, 307];%[255, 309];%[255, 310];%[256,310];%[256,311];%[257,311];%[257, 312];%[175,314];%[176, 334];%[176,334];%[178, 337];%[217, 257];%[219, 261];%[267, 275];%[266, 276];%[267, 274];%[269, 274];%[268, 277];%[194, 239];%[195, 238];%[255, 230];%[255, 231];%[232, 216];%[231, 220];%[232, 221];%[231, 224];%[232, 221]; % the center position of PSF on camera
+camera.center = [168, 302];%[165, 299];%[186, 294];%[193, 295];%[196, 320];%[199,321];% [210, 290];%[214, 288];%[206, 253];%[196, 262];%[196, 263];%[198, 263];%[205, 266];%[209, 286];%[217, 295];%[163, 234];%[167, 278];%[171, 300];%[140, 282];%[138, 287];%[140, 286];%[130,296];%[135, 302];%[112, 308];%[113, 310];%[113, 304];%[114, 303];%[112, 302];%[113, 302];%[113, 304];%[117, 302];%[118, 301];%[140, 264];%[142, 264];%[279, 243];%[280, 243];%[277, 248];%[250, 264];%[249, 285];%[250, 284];%[245, 281];%[245, 280];%[227,295];%[227,293];%[176, 314];%[254, 303];%[253, 303];%[252, 302];%[253, 303];%[252, 302];%[253, 303];%[253, 304];%[255, 305];%[254, 304];%[256, 307];%[255, 309];%[255, 310];%[256,310];%[256,311];%[257,311];%[257, 312];%[175,314];%[176, 334];%[176,334];%[178, 337];%[217, 257];%[219, 261];%[267, 275];%[266, 276];%[267, 274];%[269, 274];%[268, 277];%[194, 239];%[195, 238];%[255, 230];%[255, 231];%[232, 216];%[231, 220];%[232, 221];%[231, 224];%[232, 221]; % the center position of PSF on camera
 camera.blockedXi = [-3, 3]; 
 camera.blockedEta = [-3, 3]; % the blocked region by FPM, used for evaluating the background light and noise
 camera.blockedCoordXi = floor((camera.blockedXi(1)-camera.visionXi(1))/(camera.visionXi(2)-camera.visionXi(1))*camera.Nxi): ...
@@ -203,7 +203,7 @@ target.broadSampleNum = length(target.starWavelengthBroad); % The length of broa
 target.planetWavelength = 648e-9; % Unit: meters
 target.separation = 8; % Unit: Wavelength / Diameter (lambda / D)
 target.normalization = 220.6292;%147.1332 for lab simulation; %1; % normalization factor for simulated images
-target.flux = 1.5474e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
+target.flux = 1.576e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
 
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
 target.NdriftMode = 18;
@@ -340,7 +340,7 @@ darkHole.side = 'LR';%'R';% % the side where dark holes located - 'L', 'R' or 'L
 darkHole.rangeX = [7, 10]; % used for 'box' dark hole only, unit - f * lambda / D
 darkHole.rangeY = [-3, 3]; % used for 'box' dark hole only, unit - f * lambda / D
 if strcmpi(coronagraph.type, 'SPC')
-    darkHole.rangeR = [6, 11];%[2.5, 9] for SPLC;%[6, 10]; %[5.5, 10.5]; % used for 'wedge' dark hole only, unit - f * lambda / D
+    darkHole.rangeR = [5, 11];%[2.5, 9] for SPLC;%[6, 10]; %[5.5, 10.5]; % used for 'wedge' dark hole only, unit - f * lambda / D
     darkHole.rangeAngle = 42.5;% 30 for SPLC; % used for 'wedge' dark hole only, ranged from 0 to 45, unit - degree
 elseif strcmpi(coronagraph.type, 'SPLC')
     darkHole.rangeR = [2.5, 9];
@@ -358,7 +358,7 @@ darkHole.pixelNum = length(darkHole.pixelIndex); % the number of pixels in the d
 controller.type = 'EFC';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
 controller.whichDM = 'both';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
 if strcmpi(controller.type, 'EFC')
-    controller.alpha = 3e-5;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
+    controller.alpha = 3e-6;%3e-8;%3e-5;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
     controller.lineSearch = 0; % 1 stands for add constraint that enforces the target contrast larger than estimation covariance
     if controller.lineSearch
         data.control_regularization = zeros(Nitr, 1);

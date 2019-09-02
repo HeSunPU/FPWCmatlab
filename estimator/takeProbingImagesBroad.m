@@ -37,12 +37,33 @@ ys = (-DM.DMmesh(1)/2 + 0.5 : DM.DMmesh(1)/2 - 0.5) * dy;
 
 %% take unprobed image
 contrastMeasured = zeros(target.broadSampleNum, 1);
-for kWavelength = 1 : target.broadSampleNum
-    target.starWavelength = target.starWavelengthBroad(kWavelength);
-    I = getImg(target, DM, coronagraph, camera, DM1command, DM2command, simOrLab); % take the unprobed image
-    % [~, ~, I] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command); % simulate the image
-    imageAll(:, :, 1, kWavelength) = I; % save the unprobed image to the output variable
-    contrastMeasured(kWavelength) = mean(I(darkHole.pixelIndex)); % the averaged measured contrast in the dark holes
+if strcmpi(camera.name, 'QSI')
+    target_help = target;
+    for kWavelength = 1 : target.broadSampleNum
+        target_help.starWavelength = target.starWavelengthBroad(kWavelength);
+        target_help.normalization = target.normalizationBroadband(kWavelength);
+        target_help.flux = target.fluxBroadband(kWavelength);
+        if strcmpi(simOrLab, 'lab')
+            fprintf(target.laser,['pos=', num2str(target.channel(kWavelength))]);
+            pause(2)
+        end
+        I = getImg(target_help, DM, coronagraph, camera, DM1command, DM2command, simOrLab); % take the unprobed image
+        % [~, ~, I] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command); % simulate the image
+        imageAll(:, :, 1, kWavelength) = I; % save the unprobed image to the output variable
+        contrastMeasured(kWavelength) = mean(I(darkHole.pixelIndex)); % the averaged measured contrast in the dark holes
+    end
+elseif strcmpi(camera.name, 'Starlight')
+    [imgIFS, cube] = takeIFSImgNorm(target, DM, camera, DM1command, DM2command);
+    if data.itr == 0
+        data.IFSimage0 = imgIFS;
+    else
+        data.IFSimage(:, :, data.itr) = imgIFS;
+    end
+    for kWavelength = 1 : target.broadSampleNum
+        I = cube(:, :, kWavelength);
+        imageAll(:, :, 1, kWavelength) = I; % save the unprobed image to the output variable
+        contrastMeasured(kWavelength) = mean(I(darkHole.pixelIndex)); % the averaged measured contrast in the dark holes
+    end
 end
 disp('Unprobed image is taken.');
 disp(['The averaged contrast in the dark holes is ', num2str(mean(contrastMeasured))]);
@@ -105,19 +126,42 @@ if ((strcmpi(estimator.type, 'EKF') || strcmpi(estimator.type, 'UKF')) && estima
         u(:, k) = command';
         % take images for positive or negative probing
         contrastProbe = zeros(target.broadSampleNum, 1);
-        for kWavelength = 1 : target.broadSampleNum
-            target.starWavelength = target.starWavelengthBroad(kWavelength);
+        if strcmpi(camera.name, 'QSI')
+            for kWavelength = 1 : target.broadSampleNum
+                target_help.starWavelength = target.starWavelengthBroad(kWavelength);
+                target_help.normalization = target.normalizationBroadband(kWavelength);
+                target_help.flux = target.fluxBroadband(kWavelength);
+                if strcmpi(simOrLab, 'lab')
+                    fprintf(target.laser,['pos=', num2str(target.channel(kWavelength))]);
+                    pause(2)
+                end
+                switch estimator.whichDM
+                    case '1'
+                        Iprobe = getImg(target_help, DM, coronagraph, camera, DM1command + command, DM2command, simOrLab);
+                    case '2'
+                        Iprobe = getImg(target_help, DM, coronagraph, camera, DM1command, DM2command + command, simOrLab);
+                    otherwise
+                        disp('The DM used for probing should be either 1 or 2!');
+                        return;
+                end
+                imageAll(:, :, k+1, kWavelength) = Iprobe;
+                contrastProbe(kWavelength) = mean(Iprobe(darkHole.pixelIndex));
+            end
+        elseif strcmpi(camera.name, 'Starlight')
             switch estimator.whichDM
                 case '1'
-                    Iprobe = getImg(target, DM, coronagraph, camera, DM1command + command, DM2command, simOrLab);
+                    [imgIFS, cube] = takeIFSImgNorm(target, DM, camera, DM1command + command, DM2command);
                 case '2'
-                    Iprobe = getImg(target, DM, coronagraph, camera, DM1command, DM2command + command, simOrLab);
+                    [imgIFS, cube] = takeIFSImgNorm(target, DM, camera, DM1command, DM2command + command);
                 otherwise
                     disp('The DM used for probing should be either 1 or 2!');
                     return;
             end
-            imageAll(:, :, k+1, kWavelength) = Iprobe;
-            contrastProbe(kWavelength) = mean(Iprobe(darkHole.pixelIndex));
+            for kWavelength = 1 : target.broadSampleNum
+                Iprobe = cube(:, :, kWavelength);
+                imageAll(:, :, k+1, kWavelength) = Iprobe;
+                contrastProbe(kWavelength) = mean(Iprobe(darkHole.pixelIndex));
+            end
         end
         disp(['No. ', num2str(k), 'Probed image is taken.' ]);
         disp(['The averaged contrast in the dark holes of probed image is ', num2str(mean(contrastProbe))]);
@@ -160,30 +204,90 @@ else
                
         switch estimator.whichDM
             case '1'
-                for kWavelength = 1 : target.broadSampleNum
-                    target.starWavelength = target.starWavelengthBroad(kWavelength);
-                    Iplus = getImg(target, DM, coronagraph, camera, DM1command + command, DM2command, simOrLab);
-                    imageAll(:, :, 2 * k, kWavelength) = Iplus;
-                    contrastPlus(kWavelength) = mean(Iplus(darkHole.pixelIndex));
+                if strcmpi(camera.name, 'QSI')
+                    for kWavelength = 1 : target.broadSampleNum
+                        target_help.starWavelength = target.starWavelengthBroad(kWavelength);
+                        target_help.normalization = target.normalizationBroadband(kWavelength);
+                        target_help.flux = target.fluxBroadband(kWavelength);
+                        if strcmpi(simOrLab, 'lab')
+                            fprintf(target.laser,['pos=', num2str(target.channel(kWavelength))]);
+                            pause(2)
+                        end
+                        Iplus = getImg(target_help, DM, coronagraph, camera, DM1command + command, DM2command, simOrLab);
+                        imageAll(:, :, 2 * k, kWavelength) = Iplus;
+                        contrastPlus(kWavelength) = mean(Iplus(darkHole.pixelIndex));
+                    end
+                elseif strcmpi(camera.name, 'Starlight')
+                    [imgIFS, cube] = takeIFSImgNorm(target, DM, camera, DM1command + command, DM2command);
+                    for kWavelength = 1 : target.broadSampleNum
+                        Iplus = cube(:, :, kWavelength);
+                        imageAll(:, :, 2 * k, kWavelength) = Iplus;
+                        contrastPlus(kWavelength) = mean(Iplus(darkHole.pixelIndex));
+                    end
                 end
-                for kWavelength = 1 : target.broadSampleNum
-                    target.starWavelength = target.starWavelengthBroad(kWavelength);
-                    Iminus = getImg(target, DM, coronagraph, camera, DM1command - command, DM2command, simOrLab);
-                    imageAll(:, :, 2 * k + 1, kWavelength) = Iminus;
-                    contrastMinus(kWavelength) = mean(Iminus(darkHole.pixelIndex));
+                if strcmpi(camera.name, 'QSI')
+                    for kWavelength = 1 : target.broadSampleNum
+                        target_help.starWavelength = target.starWavelengthBroad(kWavelength);
+                        target_help.normalization = target.normalizationBroadband(kWavelength);
+                        target_help.flux = target.fluxBroadband(kWavelength);
+                        if strcmpi(simOrLab, 'lab')
+                            fprintf(target.laser,['pos=', num2str(target.channel(kWavelength))]);
+                            pause(2)
+                        end
+                        Iminus = getImg(target_help, DM, coronagraph, camera, DM1command - command, DM2command, simOrLab);
+                        imageAll(:, :, 2 * k + 1, kWavelength) = Iminus;
+                        contrastMinus(kWavelength) = mean(Iminus(darkHole.pixelIndex));
+                    end
+                elseif strcmpi(camera.name, 'Starlight')
+                    [imgIFS, cube] = takeIFSImgNorm(target, DM, camera, DM1command - command, DM2command);
+                    for kWavelength = 1 : target.broadSampleNum
+                        Iminus = cube(:, :, kWavelength);
+                        imageAll(:, :, 2 * k + 1, kWavelength) = Iminus;
+                        contrastMinus(kWavelength) = mean(Iminus(darkHole.pixelIndex));
+                    end
                 end
             case '2'
-                for kWavelength = 1 : target.broadSampleNum
-                    target.starWavelength = target.starWavelengthBroad(kWavelength);
-                    Iplus = getImg(target, DM, coronagraph, camera, DM1command, DM2command + command, simOrLab);
-                    imageAll(:, :, 2 * k, kWavelength) = Iplus;
-                    contrastPlus(kWavelength) = mean(Iplus(darkHole.pixelIndex));
+                if strcmpi(camera.name, 'QSI')
+                    for kWavelength = 1 : target.broadSampleNum
+                        target_help.starWavelength = target.starWavelengthBroad(kWavelength);
+                        target_help.normalization = target.normalizationBroadband(kWavelength);
+                        target_help.flux = target.fluxBroadband(kWavelength);
+                        if strcmpi(simOrLab, 'lab')
+                            fprintf(target.laser,['pos=', num2str(target.channel(kWavelength))]);
+                            pause(2)
+                        end
+                        Iplus = getImg(target_help, DM, coronagraph, camera, DM1command, DM2command + command, simOrLab);
+                        imageAll(:, :, 2 * k, kWavelength) = Iplus;
+                        contrastPlus(kWavelength) = mean(Iplus(darkHole.pixelIndex));
+                    end
+                elseif strcmpi(camera.name, 'Starlight')
+                    [imgIFS, cube] = takeIFSImgNorm(target, DM, camera, DM1command, DM2command + command);
+                    for kWavelength = 1 : target.broadSampleNum
+                        Iplus = cube(:, :, kWavelength);
+                        imageAll(:, :, 2 * k, kWavelength) = Iplus;
+                        contrastPlus(kWavelength) = mean(Iplus(darkHole.pixelIndex));
+                    end
                 end
-                for kWavelength = 1 : target.broadSampleNum
-                    target.starWavelength = target.starWavelengthBroad(kWavelength);
-                    Iminus = getImg(target, DM, coronagraph, camera, DM1command, DM2command - command, simOrLab);
-                    imageAll(:, :, 2 * k + 1, kWavelength) = Iminus;
-                    contrastMinus(kWavelength) = mean(Iminus(darkHole.pixelIndex));
+                if strcmpi(camera.name, 'QSI')
+                    for kWavelength = 1 : target.broadSampleNum
+                        target_help.starWavelength = target.starWavelengthBroad(kWavelength);
+                        target_help.normalization = target.normalizationBroadband(kWavelength);
+                        target_help.flux = target.fluxBroadband(kWavelength);
+                        if strcmpi(simOrLab, 'lab')
+                            fprintf(target.laser,['pos=', num2str(target.channel(kWavelength))]);
+                            pause(2)
+                        end
+                        Iminus = getImg(target_help, DM, coronagraph, camera, DM1command, DM2command - command, simOrLab);
+                        imageAll(:, :, 2 * k + 1, kWavelength) = Iminus;
+                        contrastMinus(kWavelength) = mean(Iminus(darkHole.pixelIndex));
+                    end
+                elseif strcmpi(camera.name, 'Starlight')
+                    [imgIFS, cube] = takeIFSImgNorm(target, DM, camera, DM1command, DM2command - command);
+                    for kWavelength = 1 : target.broadSampleNum
+                        Iminus = cube(:, :, kWavelength);
+                        imageAll(:, :, 2 * k + 1, kWavelength) = Iminus;
+                        contrastMinus(kWavelength) = mean(Iminus(darkHole.pixelIndex));
+                    end
                 end
             otherwise
                 disp('The DM used for probing should be either 1 or 2!');
@@ -192,7 +296,7 @@ else
         
         disp(['No. ', num2str(k), ' pair of probed images is taken.' ]);
         disp(['The averaged contrast in the dark holes of positive probed image is ', num2str(mean(contrastPlus))]);
-        disp(['The averaged contrast in the dark holes of negative probed image is ', num2str(mean(contrastPlus))]);
+        disp(['The averaged contrast in the dark holes of negative probed image is ', num2str(mean(contrastMinus))]);
     end
 end
 end
