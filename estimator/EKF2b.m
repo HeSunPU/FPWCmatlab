@@ -1,4 +1,4 @@
-function [EfocalEst, IincoEst, data] = EKF2(u, image, darkHole, model, estimator, controller, data, kWavelength)
+function [EfocalEst, IincoEst, data] = EKF2b(u, image, darkHole, model, estimator, controller, data, kWavelength)
 %% The pixel-wise extended Kalman filter estimator with no non-probe image
 % Developed by He Sun on Feb. 24, 2017
 % Revised by He Sun on Jan. 23, 2019
@@ -6,7 +6,7 @@ function [EfocalEst, IincoEst, data] = EKF2(u, image, darkHole, model, estimator
 %
 % EfocalEst - the estimated coherent focal plane electric field
 % IincoEst - the estimated incoherent focal plane intensity
-% u - the DM probing commands
+% u - 0 since no probing happens here
 % image - the images used for wavefront estimation
 % darkHole - defines the parameters of the dark holes
 % model - the control Jacobian and other model related variables
@@ -62,15 +62,11 @@ switch estimator.whichDM
         return;
 end
 probe = zeros(estimator.NumImg, darkHole.pixelNum);
-for k = 1 : estimator.NumImg
-    probe(k, :) = transpose(G * u(:, k));
-end
+probe = transpose(G * u(:, k)); % u = 0 so this will be zero
+
 %% combine the phase information from model and amplitude information from
 % measurement
-if estimator.measuredAmp
-    phase = atan2(imag(probe), real(probe));
-    probe = amplitude .* (cos(phase) + 1i * sin(phase));
-end
+
 EfocalEst = zeros(darkHole.pixelNum, 1);
 IincoEst = zeros(darkHole.pixelNum, 1);
 
@@ -95,15 +91,8 @@ switch controller.whichDM
         return;
 end
 % generate the covariance matrices
-%     R = 2 * data.backgroundStd(data.itr)^2 * eye(2);
+
 temp = zeros(estimator.NumImg);
-for k = 1 : estimator.NumImg
-%     temp(k, k) = sum(command.^2)* estimator.processVarCoefficient^2;
-%     temp(k, k) = 10 * sum(u(:, k).^2)* estimator.processVarCoefficient^2;
-%     temp(k, k) = sum(u(:, k).^2)* estimator.observationVarCoefficient2;
-    temp(k, k) = mean(abs(probe(k, :)).^2).^2 * estimator.observationVarCoefficient3;
-end
-% R = estimator.observationVarCoefficient * eye(estimator.NumImg+1);
 R = estimator.observationVarCoefficient * eye(estimator.NumImg) + temp;
 
 Q = zeros(3,3);
@@ -135,7 +124,9 @@ for q = 1 : darkHole.pixelNum
     y = Iobserv(:, q);
     % Kalman filter estimation officially starts here
     xPriori = xOld + update; % predict a priori state estimate
-    H = [2 * (xPriori(1) + real(probe(:, q))), 2 * (xPriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the observation matrix is based on the priori state estimate
+    % Probe = 0 here!
+    H = [2 * (xPriori(1) + real(probe(:, q))), 2 * (xPriori(2) + imag(probe(:, q))),...
+        ones(estimator.NumImg, 1)]; % the observation matrix is based on the priori state estimate
     if data.itr == 1
         temp = zeros(3, 3);
         temp(1, 1) = estimator.stateStd0;
@@ -151,7 +142,7 @@ for q = 1 : darkHole.pixelNum
     end
     hPriori = zeros(estimator.NumImg, 1); % the nonlinear predict observation of the field
     for k = 1 : estimator.NumImg
-        hPriori(k) = (xPriori(1) + real(probe(k, q)))^2 + (xPriori(2) + imag(probe(k, q)))^2 + xPriori(3);
+        hPriori(k) = (xPriori(1) + real(probe(k, q)))^2 + (xPriori(2) + imag(probe(k, q)))^2 + xPriori(3); %probe is zero
     end
     residual = y - hPriori; % compute the measurement residual
     S = H * Ppriori * H' + R; % residual covariance

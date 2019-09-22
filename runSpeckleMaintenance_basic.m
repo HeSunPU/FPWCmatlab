@@ -1,6 +1,6 @@
 %% Set number of iterations
 
-Nitr = 20;
+Nitr = 100;
 cRange = [-8, -4]; %[-12, -3];% the range for display
 simOrLab ='simulation';
 
@@ -13,19 +13,23 @@ simOrLab ='simulation';
 data_DH = data;
 clear data
 % save drift DM command as a different variable
-DM1command_DH = DM1command;
-DM2command_DH = DM2command;
+DM1command_DH = data_DH.DMcommand(1:DM.activeActNum ,end);
+DM2command_DH = data_DH.DMcommand(DM.activeActNum + 1 : end,end);
+
+
 
 %% run initialization again
 Initialization
 
-%%  set stuff up
+%%  set stuff up for maintainin DH
 DM1command = data_DH.DMcommand(1:DM.activeActNum,end);
 DM2command = data_DH.DMcommand(DM.activeActNum + 1 : end,end);
 
+data.DHcommand = [DM1command;DM2command];
+
 estimator.type = 'ekf_speckle';
 estimator.nonProbeImage = 0; % no probe images
-estimator.EKFincoherent = 1; % account for incoherent light
+% estimator.EKFincoherent = 1; % account for incoherent light
 estimator.NumImg = 1;
 
 
@@ -34,14 +38,49 @@ data.contrast0 = data_DH.measuredContrastAverage(end); %check this one
 data.contrast0Max = data_DH.measuredContrastMax(end);
 data.contrast0Std = data_DH.measuredContrastStd(end);
 % estimate the starting contrast using batch process estimation
-% data.EfocalEst0 = data_DH.EfocalEst(:,end);
-data.EfocalEst0 = data_DH.I0(darkHole.pixelIndex) ; %use perfect initial guess for debugging
-data.IincoEst0 = data_DH.IincoEst(:,end);
+data.EfocalEst0 = data_DH.EfocalEst(:,end);
+% data.EfocalEst0 = data_DH.EfocalPerfect(:, end) ; %THIS MIGHT BE WRONG
+
+
+% data.IincoEst0 = data_DH.IincoEst(:,end);
+data.IincoEst0 = zeros(size(data_DH.IincoEst(:,1))); %****
 
 data.estimatedContrastAverage0 = data_DH.estimatedContrastAverage(end);
 data.estimatedContrastMax0 = data_DH.estimatedContrastMax(end);
 data.estimatedContrastStd0 = data_DH.estimatedContrastStd(end);
 data.estimatedIncoherentAverage0 = data_DH.estimatedIncoherentAverage(end);
+
+
+EfocalEst = data.EfocalEst0;
+IincoEst = data.IincoEst;
+IfocalEst = abs(EfocalEst).^2;
+contrastEst = mean(IfocalEst);
+incoherentEst = mean(data.IincoEst0);
+%%  Set stuff up for DH digging using dither EFC
+% DM1command = data_DH.DMcommand(1:DM.activeActNum,1);
+% DM2command = data_DH.DMcommand(DM.activeActNum + 1 : end,1);
+% 
+% estimator.type = 'ekf_speckle';
+% estimator.nonProbeImage = 0; % no probe images
+% estimator.EKFincoherent = 1; % account for incoherent light
+% estimator.NumImg = 1;
+% 
+% 
+% data.I0 = data_DH.I(:,:,1);
+% data.contrast0 = data_DH.measuredContrastAverage(1); %check this one
+% data.contrast0Max = data_DH.measuredContrastMax(1);
+% data.contrast0Std = data_DH.measuredContrastStd(1);
+% % estimate the starting contrast using batch process estimation
+% % data.EfocalEst0 = data_DH.EfocalEst(:,end);
+% data.EfocalEst0 = data_DH.I0(darkHole.pixelIndex) ; %use perfect initial guess for debugging
+% % data.IincoEst0 = data_DH.IincoEst(:,1);
+% data.IincoEst0 = zeros(size(data_DH.IincoEst(:,1))); %****
+% % data.IincoEst0data_DH.IincoEst0
+% data.estimatedContrastAverage0 = data_DH.estimatedContrastAverage(1);
+% data.estimatedContrastMax0 = data_DH.estimatedContrastMax(1);
+% data.estimatedContrastStd0 = data_DH.estimatedContrastStd(1);
+% data.estimatedIncoherentAverage0 = data_DH.estimatedIncoherentAverage(1);
+
 %% Set up dither and drift
 % 
 % target.driftcmd
@@ -56,8 +95,8 @@ data.estimatedIncoherentAverage0 = data_DH.estimatedIncoherentAverage(end);
 %% Control loop start
 for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initial thing?
     if itr <= 3
-        camera.exposure = 0.01;
-        camera.exposure0 = 0.01;
+        camera.exposure = 0.5;%0.01;
+        camera.exposure0 = 0.5;%0.01;
     elseif itr <= 15
         camera.exposure = 0.1;
         camera.exposure0 = 0.1;
@@ -86,23 +125,10 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     switch lower(controller.type)
         case 'efc'
             if target.broadBandControl
-                weight = ones(target.broadSampleNum, 1); % weight the importance of different wavelengths over the broadband
-                M = zeros(size(G, 2), size(G, 2));
-                Gx = zeros(size(G, 2), 1);
-                for kWavelength = 1 : target.broadSampleNum
-                    Gmon = [real(G(:, :, kWavelength)); imag(G(:, :, kWavelength))];
-                    xmon = [real(EfocalEstBroadband(:, kWavelength)); imag(EfocalEstBroadband(:, kWavelength))];
-                    M = M + weight(kWavelength) * (Gmon' * Gmon);
-                    Gx = Gx + weight(kWavelength) * Gmon' * xmon;
-                end
-                command = - real((M + 1e-6 * eye(size(Gmon, 2)))^(-1)) * real(Gx);
-%                 command = - real((M + controller.alpha/target.broadSampleNum * eye(size(Gmon, 2)))^(-1)) * real(Gx);
             else
                 G = [real(G); imag(G)]; %%
                 x = [real(EfocalEst); imag(EfocalEst)];
                 if controller.adaptiveEFC % automatically choose the regularization parameter
-                    controller = adaptiveEFC(x, G, target, DM, coronagraph, camera, darkHole, controller, DM1command, DM2command, simOrLab);
-                    disp(['Best alpha: ', num2str(controller.alpha)])
                 end
                 if controller.lineSearch && itr > 1 %constraint that enforces the target contrast larger than estimation covariance
                     P = data.P(1:2, 1:2, :, itr-1);
@@ -128,7 +154,6 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
                     P = data.P(1:2, 1:2, :, itr-1);
                     contrastEst = sum(abs(x + G * command).^2)/darkHole.pixelNum + trace(mean(P, 3));% + estimator.processVarCoefficient * sum(command.^2);
                 end
-                
             end
         otherwise
             disp('Currently, we only have EFC and robust Linear Programming controller. Others are still under development.')
@@ -140,8 +165,10 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     % find mag of EFC command or contrast and scale appropriately (dither
     % should be smaller but not a lot smaller?)
     command_mean = mean(abs(command));
-    estimator.ditherStd = 0.5*10^(floor(log10(command_mean))-1); %THIS LINE ADDED
+%     estimator.ditherStd = 0.5*10^(floor(log10(command_mean))-1); %THIS LINE ADDED
     
+    estimator.ditherStd = 50*10^(floor(log10(command_mean))-1); % OP1, PAIR WITH DRIFT OP1
+
     command_dither = [normrnd(0,estimator.ditherStd,[DM.activeActNum,1]);...
         normrnd(0,estimator.ditherStd,[DM.activeActNum,1])];%THIS IS DITHER COMMAND, check that it is within the resolution of the system
     
@@ -150,12 +177,18 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
         case '1'
             DM1command = DM1command + command + command_dither(1:DM.activeActNum);
             
-            data.DMcommand(:, itr) = [DM1command; zeros(DM.activeActNum,1)];
+%             data.DMcommand(:, itr) = [DM1command; zeros(DM.activeActNum,1)];
+
+            data.DMcommand(:, itr) = [DM1command; DM2command_DH]; % unused DM gets dark hole command
+            
             command_dither(DM.activeActNum + 1 : end) = 0; %set unused mirror commands to zero
         case '2'
             DM2command = DM2command + command + command_dither(DM.activeActNum + 1 : end); %%
             
-            data.DMcommand(:, itr) = [zeros(DM.activeActNum,1);DM2command];
+%             data.DMcommand(:, itr) = [zeros(DM.activeActNum,1);DM2command];
+            
+            data.DMcommand(:, itr) = [DM1command_DH;DM2command]; % unused DM gets dark hole command
+            
             command_dither(1:DM.activeActNum) = 0;
         case 'both'
             DM1command = DM1command + command(1:DM.activeActNum) + command_dither(1:DM.activeActNum);
@@ -180,8 +213,11 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     surf_drift(marginNpixel+1 : end-marginNpixel, marginNpixel+1 : end-marginNpixel) = ...
         target.driftDisp*(rand([DM.DMmesh - 2 * marginNpixel,1])-0.5);
         
-%     command_drift = height2voltage(surf_drift, DM, target.driftDM, 5);
-    command_drift = zeros(DM.activeActNum,1);
+%     command_drift = 0.1*height2voltage(surf_drift, DM, target.driftDM,
+%     5); %used for 300 iter case initially
+    command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP1, PAIR WITH DITHER OP1
+
+%     command_drift = zeros(DM.activeActNum,1);
     switch target.driftDM % determine DM that will introduce drift and update command, this command DOES NOT get stored in "command"
         case '1'
             DM1command = DM1command + command_drift;% command; needs to be random
@@ -200,24 +236,23 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
             return;
     end
     
-    %% for simulation, calculate the perfect contrast
+    %% for simulation, calculate the perfect contrast and E field
     if strcmpi(simOrLab, 'simulation')
         if target.broadBandControl
-            if itr == 1
-                contrastPerfect = zeros(target.broadSampleNum, Nitr);
-            end
-            for kWavelength = 1 : target.broadSampleNum
-                target_help.starWavelegth = target.starWavelengthBroad(kWavelength);
-                [EfocalStarNoise, EfocalPlanetNoise, InoNoise] = opticalModel(target_help, DM, coronagraph, camera, DM1command, DM2command);
-                contrastPerfect(kWavelength, itr) = mean(InoNoise(darkHole.pixelIndex));
-            end
         else
+            [EfocalStar, EfocalPlanet, I0] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command);
+            data.Efocaltrue(:,itr) = EfocalStar(darkHole.pixelIndex);
+            data.Iincotrue(:,itr) = abs(EfocalPlanet(darkHole.pixelIndex)).^2; % We can have perfect knowledge of the electric field in simulation         
+            
             if itr == 1
                 contrastPerfect = zeros(Nitr, 1);
             end
             [EfocalStarNoise, EfocalPlanetNoise, InoNoise] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command);
             contrastPerfect(itr) = mean(InoNoise(darkHole.pixelIndex));
             data.EfocalPerfect(:, itr) = EfocalStarNoise(darkHole.pixelIndex);
+%             data.Efocaltrue(:,itr) = EfocalStar(darkHole.pixelIndex);
+            data.Iincotrue(:,itr) = abs(EfocalPlanet(darkHole.pixelIndex)).^2; % We can have perfect knowledge of the electric field in simulation         
+
         end
     end
     %% estimate the electric field
@@ -230,12 +265,15 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
             [EfocalStar, EfocalPlanet, I0] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command);
             EfocalEst = EfocalStar(darkHole.pixelIndex);
             IincoEst = abs(EfocalPlanet(darkHole.pixelIndex)).^2; % We can have perfect knowledge of the electric field in simulation
+        
         case 'ekf_speckle'
 %             [image, u, data] = takeProbingImagesSpeckle(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
             %might need to update camera exposure time here
+            
             image = getImg(target, DM, coronagraph, camera, DM1command, DM2command, simOrLab);
             u = zeros(DM.activeActNum,estimator.NumImg);
-%             data.uProbe(:, :, data.itr) = u;
+            
+%             image = abs(EfocalStar).^2; % FOR TESTING ONLY ********
             
             if estimator.nonProbeImage
                 if estimator.EKFincoherent
@@ -245,9 +283,9 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
                 end
             else
                 if estimator.EKFincoherent
-                    [EfocalEst, IincoEst, data] = EKF2b(u, image, darkHole, model, estimator, controller, data);
+                    [EfocalEst, IincoEst, data] = EKF2_basic(u, image, darkHole, model, estimator, controller, data);
                 else
-                    [EfocalEst, IincoEst, data] = EKF3(u, image, darkHole, model, estimator, controller, data);
+                    [EfocalEst, IincoEst, data] = EKF3b(u, image, darkHole, model, estimator, controller, data);
                 end
             end
             %                 [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data);

@@ -4,8 +4,21 @@
 
 
 % NEED TO SEND CONTROL DM FLAT MAP AS DM COMMAND HERE?
-[EfocalStar_openloop, EfocalPlanet_openloop, Iopenloop] = ...
-    opticalModel(target, DM, coronagraph, camera, data.Driftcommand(1:DM.activeActNum,itr), data.Driftcommand(DM.activeActNum + 1 : end,itr));
+% unused drift DM should send dark hole command
+switch target.driftDM
+    case '1'
+        [EfocalStar_openloop, EfocalPlanet_openloop, Iopenloop] = ...
+            opticalModel(target, DM, coronagraph, camera, ...
+            sum(data.Driftcommand(1:DM.activeActNum,1:itr), 2) + data_DH.DMcommand(1:DM.activeActNum,end), ...
+            data_DH.DMcommand(DM.activeActNum + 1 : end,end));
+        
+    case '2'
+        [EfocalStar_openloop, EfocalPlanet_openloop, Iopenloop] = ...
+            opticalModel(target, DM, coronagraph, camera, data_DH.Driftcommand(1:DM.activeActNum,end),  data.Driftcommand(DM.activeActNum + 1 : end,itr));     
+    otherwise
+        disp('You can only use the first DM or second DM for speckle drift.');
+        return;
+end
 
 data.estOpenLoopContrast(itr,1) = mean(Iopenloop(darkHole.pixelIndex));
 
@@ -17,10 +30,10 @@ if target.broadBandControl
 else
     IincoEst2D(darkHole.pixelIndex) = IincoEst;
 end
-figure(10), imagesc(log10(abs(IincoEst2D))), colorbar;
-caxis(cRange);
-title(['Incoherent light after control iteration ', num2str(itr)]);
-drawnow
+% figure(10), imagesc(log10(abs(IincoEst2D))), colorbar;
+% caxis(cRange);
+% title(['Incoherent light after control iteration ', num2str(itr)]);
+% drawnow
 
 IcoEst2D = zeros(size(I));
 if target.broadBandControl
@@ -28,10 +41,10 @@ if target.broadBandControl
 else
     IcoEst2D(darkHole.pixelIndex) = abs(EfocalEst).^2;
 end
-figure(11), imagesc(log10(abs(IcoEst2D))), colorbar;
-caxis(cRange);
-title(['Coherent light after control iteration ', num2str(itr)]);
-drawnow
+% figure(11), imagesc(log10(abs(IcoEst2D))), colorbar;
+% caxis(cRange);
+% title(['Coherent light after control iteration ', num2str(itr)]);
+% drawnow
 
 % focal plane images given control commands in log scale
 if target.broadBandControl
@@ -55,17 +68,128 @@ end
 % ylim([10^(cRange(1)), 10^(cRange(2))]);
 ylim([10^(cRange(1)), 10^(cRange(2)+2)]);
 legend('measured', 'estimated', 'incoherent','open loop');
+xlabel('iteration');
+ylabel('contrast');
 drawnow
-if (strcmpi(simOrLab, 'simulation'))
-    if target.broadBandControl
-        figure(22), semilogy(0:itr, mean([data.contrast0, contrastPerfect(:, 1:itr)], 1), '-o');
-    else
-        figure(22), semilogy(0:itr, [data.contrast0; contrastPerfect(1:itr)], '-o');
-    end
-    ylim([10^(cRange(1)), 10^(cRange(2))]);
-    legend('perfect');
-    drawnow
-end
+
+figure(24); plot(1:DM.activeActNum,command,'r',...
+    1:2*DM.activeActNum,data.Dithercommand(:, itr),'b',...
+     1:2*DM.activeActNum,data.Driftcommand(:,itr),'g');
+axis tight
+legend('DM Control Command','Dither Command','Drift Command');
+drawnow
+
+figure(42); plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'r',...
+    1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'b');
+axis tight
+legend('True','Estimated');
+title('True vs Estimated E Field');
+
+drawnow
+
+%%
+% figure(43); 
+% subplot(1,2,1)
+% plot(1:darkHole.pixelNum,abs(real(data.EfocalEst(:,:))-real(data.Efocaltrue(:,:))));
+% axis tight
+% title('Estimated - True E Field');
+% 
+% subplot(1,2,2)
+% plot(1:darkHole.pixelNum,abs(real(data.EfocalEst(:,:))+real(data.Efocaltrue(:,:))));
+% axis tight
+% title('Estimated + True E Field');
+%%
+
+% figure(42); plot(1:darkHole.pixelNum,real(data_DH.EfocalPerfect(:, end)),'r',...
+%     1:darkHole.pixelNum,real(data.EfocalEst0),'b');
+% axis tight
+% legend('Perfect end DH E','End Estimated E');
+% title('Perfect vs Estimated E Field at end of DH dig');
+%%
+% 
+% figure(43); 
+% subplot(2,2,1)
+% plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,1)),'r',...
+%     1:darkHole.pixelNum,real(data.EfocalEst0),'b');
+% axis tight
+% legend('True','Estimated');
+% title('Iteration1');
+% 
+% subplot(2,2,2)
+% plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,2)),'r',...
+%     1:darkHole.pixelNum,real(data.EfocalEst(:,1)),'b');
+% axis tight
+% legend('True','Estimated');
+% title('Iteration2');
+% 
+% subplot(2,2,3)
+% plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,3)),'r',...
+%     1:darkHole.pixelNum,real(data.EfocalEst(:,2)),'b');
+% axis tight
+% legend('True','Estimated');
+% title('Iteration3');
+% 
+% subplot(2,2,4)
+% plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,4)),'r',...
+%     1:darkHole.pixelNum,real(data.EfocalEst(:,3)),'b');
+% axis tight
+% legend('True','Estimated');
+% title('Iteration4');
+
+%%
+% EhatCL_1_full = [real(data.EfocalEst0); imag(data.EfocalEst0)] + G * (command +command_dither(DM.activeActNum + 1 : end)); %FOR DM2 AS DITHER DM
+% EhatCL_1 = EhatCL_1_full(1:darkHole.pixelNum,1); % [real;imag]
+% 
+% IhatCL1 = abs(EhatCL_1).^2;
+% ICL1 = image(darkHole.pixelIndex);
+% 
+% figure(43); 
+% 
+% subplot(2,2,1)
+% plot(1:darkHole.pixelNum,real(data_DH.EfocalEst(:,end)),'r',...
+%     1:darkHole.pixelNum,real(data.EfocalEst0),'b');
+% axis tight
+% legend('EOL_0','EhatOL_0');
+% title('Step 0 Open Loop');
+% 
+% subplot(2,2,2)
+% plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,1)),'r',...
+%     1:darkHole.pixelNum,EhatCL_1,'b'); % IS THIS ONE RIGHT
+% axis tight
+% legend('ECL_1','EhatCL_1 (post command and dither)');
+% title('Step 1 Closed Loop E field');
+% 
+% subplot(2,2,3)
+% plot(1:darkHole.pixelNum,real(ICL1),'r',...
+%     1:darkHole.pixelNum,IhatCL1,'b');
+% axis tight
+% legend('ICL_1','IhatCL_1');
+% title('Step 1 Closed Loop Intensity');
+% 
+% subplot(2,2,4)
+% plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,1)),'r',...
+%     1:darkHole.pixelNum,real(data.EfocalEst(:,1)),'b');
+% axis tight
+% legend('EOL_1','EhatOL_1');
+% title('Step 1 Open Loop E Field');
+
+
+
+
+
+
+%%
+
+% if (strcmpi(simOrLab, 'simulation'))
+%     if target.broadBandControl
+%         figure(22), semilogy(0:itr, mean([data.contrast0, contrastPerfect(:, 1:itr)], 1), '-o');
+%     else
+%         figure(22), semilogy(0:itr, [data.contrast0; contrastPerfect(1:itr)], '-o');
+%     end
+%     ylim([10^(cRange(1)), 10^(cRange(2))]);
+%     legend('perfect');
+%     drawnow
+% end
 
 % measured change of focal plane image
 if ~target.broadBandControl
@@ -74,13 +198,13 @@ if ~target.broadBandControl
     else
         dImeasured = data.I(:,:,itr) - data.I(:,:,itr - 1);
     end
-    dImeasured2D = zeros(size(dImeasured));
-    dImeasured2D(darkHole.pixelIndex) = dImeasured(darkHole.pixelIndex);
-    figure(3), imagesc(log10(abs(dImeasured2D))), colorbar;
-    title('Measured Intensity Change');
-    caxis(cRange);
-    drawnow
-    
+%     dImeasured2D = zeros(size(dImeasured));
+%     dImeasured2D(darkHole.pixelIndex) = dImeasured(darkHole.pixelIndex);
+%     figure(3), imagesc(log10(abs(dImeasured2D))), colorbar;
+%     title('Measured Intensity Change');
+%     caxis(cRange);
+%     drawnow
+%     
     % linear predicted change of focal plane image
     switch controller.whichDM
         case '1'
@@ -98,9 +222,9 @@ if ~target.broadBandControl
     dImodel = abs(EfocalEstNew).^2 - abs(EfocalEst).^2;
     dImodel2D = zeros(size(dImeasured));
     dImodel2D(darkHole.pixelIndex) = dImodel;
-    
-    figure(4), imagesc(log10(abs(dImodel2D))), colorbar;
-    title('Model-predicted Intensity Change');
-    caxis(cRange);
-    drawnow
+%     
+%     figure(4), imagesc(log10(abs(dImodel2D))), colorbar;
+%     title('Model-predicted Intensity Change');
+%     caxis(cRange);
+%     drawnow
 end

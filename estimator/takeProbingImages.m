@@ -207,7 +207,7 @@ for k = 1 : probe_number
         switch lower(estimator.type)
             case {'ekf', 'ukf'}
                 u(:, 2*k - 1) = command';
-                u(:, 2*k) = -command';
+                u(:, 2*k) = -command'; 
             otherwise
                 u(:, k) = command';
         end

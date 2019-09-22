@@ -32,6 +32,7 @@ Iobserv = zeros(estimator.NumImg + 1, darkHole.pixelNum);
 for k = 1 : estimator.NumImg + 1
     Iobserv2D = image(:, :, k);
     Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
+
 end
 % Compuate the influence caused by probing
 switch estimator.whichDM

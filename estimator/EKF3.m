@@ -93,7 +93,7 @@ switch controller.whichDM
         command = command(1 : length(command)/2);
     case '2'
         G = model.G2;
-        command = command(length(command)/2 + 1, length(command));
+        command = command(length(command)/2 + 1: length(command));
     case 'both'
         G = [model.G1, model.G2];
     otherwise
@@ -115,6 +115,8 @@ end
 % R = estimator.observationVarCoefficient * eye(estimator.NumImg+1);
 R = estimator.observationVarCoefficient * eye(estimator.NumImg) + temp;
 Q = (sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2); % for simulation
+
+
 % Kalman filter for each pixel in the dark holes
 for q = 1 : darkHole.pixelNum
     if kWavelength == 0
