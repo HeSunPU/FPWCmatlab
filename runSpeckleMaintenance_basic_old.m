@@ -1,6 +1,6 @@
 %% Set number of iterations
 
-Nitr = 30;
+Nitr = 100;
 cRange = [-8, -4]; %[-12, -3];% the range for display
 simOrLab ='simulation';
 
@@ -19,9 +19,8 @@ DM2command_DH = data_DH.DMcommand(DM.activeActNum + 1 : end,end);
 
 
 %% run initialization again
-Initialization_Maint
-%%
-Initialization_Alt
+Initialization
+
 %%  set stuff up for maintainin DH
 DM1command = data_DH.DMcommand(1:DM.activeActNum,end);
 DM2command = data_DH.DMcommand(DM.activeActNum + 1 : end,end);
@@ -57,12 +56,6 @@ IincoEst = data.IincoEst;
 IfocalEst = abs(EfocalEst).^2;
 contrastEst = mean(IfocalEst);
 incoherentEst = mean(data.IincoEst0);
-
-%% Set up initial things for checking estimate
-
-dataAlt.EfocalEst0 = data_DH.EfocalEst(:,end); % CORRECT ONE
-% dataAlt.EfocalEst0 = data_DH.EfocalPerfect(:, end) ; %USE FOR DEBUGGING
-
 %%  Set stuff up for DH digging using dither EFC
 % DM1command = data_DH.DMcommand(1:DM.activeActNum,1);
 % DM2command = data_DH.DMcommand(DM.activeActNum + 1 : end,1);
@@ -105,11 +98,11 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
         camera.exposure = 0.5;%0.01;
         camera.exposure0 = 0.5;%0.01;
     elseif itr <= 15
-        camera.exposure = 0.5;
-        camera.exposure0 = 0.5;
+        camera.exposure = 0.1;
+        camera.exposure0 = 0.1;
     else
-        camera.exposure = 0.5;
-        camera.exposure0 = 0.5;
+        camera.exposure = 0.3;
+        camera.exposure0 = 0.3;
     end
     data.itr = itr;
     disp('***********************************************************************');
@@ -166,20 +159,15 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
             disp('Currently, we only have EFC and robust Linear Programming controller. Others are still under development.')
     end
     
-    data.efcCommand(:,itr) = command;
+
     
     %% Susan edited this block a bit 
     % find mag of EFC command or contrast and scale appropriately (dither
     % should be smaller but not a lot smaller?)
     command_mean = mean(abs(command));
 %     estimator.ditherStd = 0.5*10^(floor(log10(command_mean))-1); %THIS LINE ADDED
-      
-    estimator.ditherStd = 250*10^(floor(log10(command_mean))-1); % 
-%     estimator.ditherStd = 500*10^(floor(log10(command_mean))-1); % HIGH
-%     ENOUGH SUCH THAT EKF DOESNT DIVERGE
-
-%     estimator.ditherStd = 50*10^(floor(log10(command_mean))-1); % OP2, PAIR WITH DRIFT OP2
-%     estimator.ditherStd = 10*10^(floor(log10(command_mean))-1); % OP1, PAIR WITH DRIFT OP1
+    
+    estimator.ditherStd = 50*10^(floor(log10(command_mean))-1); % OP1, PAIR WITH DRIFT OP1
 
     command_dither = [normrnd(0,estimator.ditherStd,[DM.activeActNum,1]);...
         normrnd(0,estimator.ditherStd,[DM.activeActNum,1])];%THIS IS DITHER COMMAND, check that it is within the resolution of the system
@@ -227,12 +215,9 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
         
 %     command_drift = 0.1*height2voltage(surf_drift, DM, target.driftDM,
 %     5); %used for 300 iter case initially
-    command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP2, PAIR WITH DITHER OP2
-%     command_drift = 0.01*height2voltage(surf_drift, DM, target.driftDM, 5); %OP2, PAIR WITH DITHER OP2
-%     command_drift = 0.1*height2voltage(surf_drift, DM, target.driftDM, 5); %OP1, PAIR WITH DITHER OP1
+    command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP1, PAIR WITH DITHER OP1
 
 %     command_drift = zeros(DM.activeActNum,1);
-    
     switch target.driftDM % determine DM that will introduce drift and update command, this command DOES NOT get stored in "command"
         case '1'
             DM1command = DM1command + command_drift;% command; needs to be random
@@ -285,18 +270,6 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
 %             [image, u, data] = takeProbingImagesSpeckle(contrastEst, target, DM, coronagraph, camera, darkHole, estimator, DM1command, DM2command, simOrLab, data);
             %might need to update camera exposure time here
             
-            
-            
-            % ** Only for comparison, remove later **
-
-            dataAlt.DMcommand = data.DMcommand;% - data.Dithercommand; %IS THIS RIGHT
-            [imageProbed, uProbed, dataAlt] = takeProbingImages(contrastEst, target, DM, coronagraph, camera, darkHole, estimatorAlt, DM1command, DM2command, simOrLab, dataAlt);
-            if estimatorAlt.savedata
-                dataAlt.imageSet{itr} = imageProbed;
-                dataAlt.probeSet{itr} = uProbed;
-            end
-            % **
-            
             image = getImg(target, DM, coronagraph, camera, DM1command, DM2command, simOrLab);
             u = zeros(DM.activeActNum,estimator.NumImg);
             
@@ -310,21 +283,8 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
                 end
             else
                 if estimator.EKFincoherent
-                    % ** Only for comparison, remove later **
-                     [EfocalEstProbed, IincoEstProbed, dataAlt] = batch(uProbed, imageProbed, darkHole, model, estimatorAlt, dataAlt);
-                     dataAlt.EfocalEst(:,itr) = EfocalEstProbed;
-                    % **
-                    
-                    % Real calc
                     [EfocalEst, IincoEst, data] = EKF2_basic(u, image, darkHole, model, estimator, controller, data);
                 else
-                    % ** Only for comparison, remove later **
-%                     
-                     [EfocalEstProbed, IincoEstProbed, dataAlt] = batch(uProbed, imageProbed, darkHole, model, estimatorAlt, dataAlt);
-                     dataAlt.EfocalEst(:,itr) = EfocalEstProbed;
-                    % **
-
-                    % Real calc
                     [EfocalEst, IincoEst, data] = EKF3b(u, image, darkHole, model, estimator, controller, data);
                 end
             end
@@ -370,86 +330,8 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     data.measuredContrastMax(itr) = max(I(darkHole.pixelIndex));
     data.measuredContrastStd(itr) = std(I(darkHole.pixelIndex));
     disp(['The measured average contrast in the dark holes after ', num2str(itr), ' iterations is ', num2str(data.measuredContrastAverage(itr))]);
-    %% Open Loop Calculation
-    switch target.driftDM
-        case '1'
-            EfocalStar_openloop = data.EfocalEst0 + model.G1 * sum(data.Driftcommand(1:DM.activeActNum,1:itr),2);
-            Iopenloop = abs(EfocalStar_openloop).^2;
-%             [EfocalStar_openloop_full, EfocalPlanet_openloop, Iopenloop_full] = ...
-%                 opticalModel(target, DM, coronagraph, camera, ...
-%                 sum(data.Driftcommand(1:DM.activeActNum,1:itr), 2) + data_DH.DMcommand(1:DM.activeActNum,end), ...
-%                 data_DH.DMcommand(DM.activeActNum + 1 : end,end));
-%             EfocalStar_openloop = EfocalStar_openloop_full(darkHole.pixelIndex);
-%             Iopenloop = Iopenloop_full(darkHole.pixelIndex);
-%             
-            
-        case '2'
-            EfocalStar_openloop = data.EfocalEst0+ model.G2 * sum(data.Driftcommand(DM.activeActNum+1:end,1:itr),2);
-            Iopenloop = abs(EfocalStar_openloop).^2;
-        otherwise
-            disp('You can only use the first DM or second DM for speckle drift.');
-            return;
-    end
-    data.EfocalEstOpenLoop(:,itr) = EfocalStar_openloop;
-    data.estOpenLoopContrast(itr,1) = mean(Iopenloop);
-    %% Probed comparison storage
-    data.EfocalEstProbed(:,itr) = EfocalEstProbed;
     
-    %% *REMOVE?* focal plane estimations in log scale after giving control commands
-    IincoEst2D = zeros(size(I));
-    if target.broadBandControl
-        IincoEst2D(darkHole.pixelIndex) = mean(data.IincoEst(:, :, itr), 2);
-    else
-        IincoEst2D(darkHole.pixelIndex) = IincoEst;
-    end
-    % figure(10), imagesc(log10(abs(IincoEst2D))), colorbar;
-    % caxis(cRange);
-    % title(['Incoherent light after control iteration ', num2str(itr)]);
-    % drawnow
-    
-    IcoEst2D = zeros(size(I));
-    if target.broadBandControl
-        IcoEst2D(darkHole.pixelIndex) = mean(abs(data.EfocalEst(:, :, itr)).^2, 2);
-    else
-        IcoEst2D(darkHole.pixelIndex) = abs(EfocalEst).^2;
-    end
-    
-    %% measured change of focal plane image
-    if ~target.broadBandControl
-        if itr == 1
-            dImeasured = data.I(:,:,itr) - data.I0;
-        else
-            dImeasured = data.I(:,:,itr) - data.I(:,:,itr - 1);
-        end
-
-        % linear predicted change of focal plane image * SHOULD INCLUDE
-        % DITHER?*
-        switch controller.whichDM
-            case '1'
-                dEmodel = model.G1 * (command + command_dither(1:DM.activeActNum));
-            case '2'
-                dEmodel = model.G2 * (command + command_dither(DM.activeActNum + 1 : end)); %*******
-            case 'both'
-                dEmodel = model.G1 * command(1:DM.activeActNum) + model.G2 * command(DM.activeActNum + 1 : end);
-            otherwise
-                disp('You can only use the first DM, second DM or both for wavefront control.');
-                return;
-        end
-        
-        EfocalEstNew = EfocalEst + dEmodel;
-        dImodel = abs(EfocalEstNew).^2 - abs(EfocalEst).^2;
-        dImodel2D = zeros(size(dImeasured));
-        dImodel2D(darkHole.pixelIndex) = dImodel;
-    end
     %% Visualizations
     % focal plane estimations in log scale after giving control commands
     Plot_SpeckleMaint
-end
-
-
-%% Re-plot data
-
-for itr = 1:Nitr
-    
-   Plot_SpeckleMaint 
 end
