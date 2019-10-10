@@ -3,12 +3,13 @@ function [EfocalEst, IincoEst, data] = EKF3b(u, image, darkHole, model, estimato
 % Developed by He Sun on Feb. 24, 2017
 % Revised by He Sun on Jan. 23, 2019
 % Revised by He Sun on Mar. 25, 2019
+% Revised by SFR on Oct 9, 2018
 % In this revised version, we do not use the image without DM probes
 %
-% EfocalEst - the estimated coherent focal plane electric field
+% EfocalEst - the estimated OPEN LOOP coherent focal plane electric field
 % IincoEst - the estimated incoherent focal plane intensity
-% u - the DM probing commands
-% image - the images used for wavefront estimation
+% u - 0, no probes used
+% image - the dithered image used for wavefront estimation
 % darkHole - defines the parameters of the dark holes
 % model - the control Jacobian and other model related variables
 % controller - the properties of the controller
@@ -110,10 +111,13 @@ if data.itr == 1
     if strcmpi(estimator.type, 'ekf_speckle') == 0
         command = data.DMcommand(:, 1);
     else
-        command = data.DMcommand(:, 1) - data.DHcommand;
+%         command = data.DMcommand(:, 1) - data.DHcommand;
+        command = data.DMcommand(:, 1);
+
     end
 else
-    command = data.DMcommand(:, data.itr) - data.DMcommand(:, data.itr - 1);
+%     command = data.DMcommand(:, data.itr) - data.DMcommand(:, data.itr - 1);
+    command = data.DMcommand(:, data.itr);
 end
 switch controller.whichDM
     case '1'
@@ -187,7 +191,10 @@ for q = 1 : darkHole.pixelNum
     residual = y - hPriori; % compute the measurement residual
     S = H * Ppriori * H' + R; % residual covariance
     K = Ppriori * H' / S; % optimal Kalman gain
-    xPosteriori = xPriori + K * residual; % update a posteriori state estimate
+    
+%     xPosteriori = xPriori + K * residual; % update a posteriori state estimate
+    xPosteriori = xold + K * residual; % update a posteriori state estimate
+
     Pposteriori = (eye(2) - K * H) * Ppriori; % update a posteriori estimate covariance
     % Iterate the EKF to make more accurate estimation
     for iEKF = 1 : estimator.itrEKF
