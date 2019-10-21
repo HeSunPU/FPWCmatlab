@@ -375,7 +375,7 @@ darkHole.pixelNum = length(darkHole.pixelIndex); % the number of pixels in the d
 controller.type = 'efc';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
 controller.whichDM = '2';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
 if strcmpi(controller.type, 'EFC')
-    controller.alpha = 1e-4;%3e-6;%1e-4;%3e-4;%5e-7;%sfr 3e-4;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
+    controller.alpha = 1e-4;%<GOOD 3e-5;% ONE 1e-4;%3e-4;%5e-7;%sfr 3e-4;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
     controller.lineSearch = 0; % 1 stands for add constraint that enforces the target contrast larger than estimation covariance
     if controller.lineSearch
         data.control_regularization = zeros(Nitr, 1);
@@ -442,9 +442,9 @@ estimator.NumImg = 1; %CHANGE BACK TO 1 % Used when EKFpairProbing is 0
 estimator.linearProbe = 1;%1; % 1 stands for only considering the linear part of DM probing, 0 stands for simulating the probing which include all the terms
 estimator.nonProbeImage = 0;
 estimator.EKFpairProbing = 0; % 1 stands for still using pair-wise probing, 0 stands for not
-estimator.EKFincoherent = 1; % 1 stands for estimating incoherent in EKF, 0 stands for assuming no incoherent light
+estimator.EKFincoherent = 0; % 1 stands for estimating incoherent in EKF, 0 stands for assuming no incoherent light
 estimator.optimized_probe = 0;
-estimator.itrEKF = 10;%10;%10;%3; % Used for 'EKF' only, IEKF iterations to make more accurate estimation
+estimator.itrEKF = 1;%10;%10;%3; % Used for 'EKF' only, IEKF iterations to make more accurate estimation
 estimator.itrUKF = 10;%10; % Used for 'UKF' only, which has similar formula to IEKF
 estimator.probeArea = [1, 17, -17, 17]; %[0, 17, -17, 17]; % Define the region in lambda / D
 estimator.probeMethod = 'Empirical'; %'OptimalOffsets';% 'Empirical' or 'OptimalOffsets', choose the best probing offset to reduce state covariance
@@ -494,8 +494,10 @@ if estimator.activeSensing
     estimator.sgd_itr = 200;
 end
 %sfr added
-estimator.ditherStd = 2e-4 ; %this should change with contrast?
-
+if strcmpi(estimator.type, 'ekf_speckle')
+    estimator.ditherStd = 2e-4 ; %this should change with contrast?
+    estimator.CL = 0; % if 1, EKF estimates the closed loop field, if 0 EKF estimates the open loop field
+end
 
 %% Initialize the linear system identification algorithm
 train.switch = 0; % 1 stands for online EM-algorithm is on, otherwise it is 'off'

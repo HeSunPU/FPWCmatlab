@@ -1,6 +1,9 @@
+%% Updates
+% Oct 9, 2019: updated to estimate OL electric field
+
 %% Set number of iterations
 
-Nitr = 30;
+Nitr = 3;
 cRange = [-8, -4]; %[-12, -3];% the range for display
 simOrLab ='simulation';
 
@@ -20,9 +23,9 @@ DM2command_DH = data_DH.DMcommand(DM.activeActNum + 1 : end,end);
 
 %% run initialization again
 Initialization_Maint
-%%
+
 Initialization_Alt
-%%  set stuff up for maintainin DH
+%  set stuff up for maintainin DH
 DM1command = data_DH.DMcommand(1:DM.activeActNum,end);
 DM2command = data_DH.DMcommand(DM.activeActNum + 1 : end,end);
 
@@ -58,7 +61,7 @@ IfocalEst = abs(EfocalEst).^2;
 contrastEst = mean(IfocalEst);
 incoherentEst = mean(data.IincoEst0);
 
-%% Set up initial things for checking estimate
+% Set up initial things for checking estimate
 
 dataAlt.EfocalEst0 = data_DH.EfocalEst(:,end); % CORRECT ONE
 % dataAlt.EfocalEst0 = data_DH.EfocalPerfect(:, end) ; %USE FOR DEBUGGING
@@ -88,16 +91,7 @@ dataAlt.EfocalEst0 = data_DH.EfocalEst(:,end); % CORRECT ONE
 % data.estimatedContrastStd0 = data_DH.estimatedContrastStd(1);
 % data.estimatedIncoherentAverage0 = data_DH.estimatedIncoherentAverage(1);
 
-%% Set up dither and drift
-% 
-% target.driftcmd
-% estimator.dither
-% 
-% drift = drift + 2*2*pi*1e-11/target.starWavelength*(numpy.random.random(drift.shape)-0.5) ;% in nm
-% 
-% command_dither = normrnd(0,target.driftStd,[DM.activeActNum,1]); %THIS IS DITHER COMMAND
-% 
-% dus.append(numpy.random.normal(0, sigma_u, u.shape)) %DITHER
+
 
 %% Control loop start
 for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initial thing?
@@ -171,10 +165,15 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     %% Susan edited this block a bit 
     % find mag of EFC command or contrast and scale appropriately (dither
     % should be smaller but not a lot smaller?)
-    command_mean = mean(abs(command));
-%     estimator.ditherStd = 0.5*10^(floor(log10(command_mean))-1); %THIS LINE ADDED
+    switch controller.whichDM
+        case '1'
+            command_mean = mean(abs(command - DM1command));
+        case '2'
+            command_mean = mean(abs(command - DM2command));
+    end
+    estimator.ditherStd = 10*10^(floor(log10(command_mean))-1); %THIS LINE ADDED
       
-    estimator.ditherStd = 250*10^(floor(log10(command_mean))-1); % 
+%     estimator.ditherStd = 250*10^(floor(log10(command_mean))-1); % 
 %     estimator.ditherStd = 500*10^(floor(log10(command_mean))-1); % HIGH
 %     ENOUGH SUCH THAT EKF DOESNT DIVERGE
 
@@ -183,28 +182,35 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
 
     command_dither = [normrnd(0,estimator.ditherStd,[DM.activeActNum,1]);...
         normrnd(0,estimator.ditherStd,[DM.activeActNum,1])];%THIS IS DITHER COMMAND, check that it is within the resolution of the system
-    
+%     
+%     command_dither = zeros(2*DM.activeActNum,1);
     
     switch controller.whichDM
         case '1'
-            DM1command = DM1command + command + command_dither(1:DM.activeActNum);
+%             DM1command = DM1command + command + command_dither(1:DM.activeActNum);
             
-%             data.DMcommand(:, itr) = [DM1command; zeros(DM.activeActNum,1)];
+%             DM1command = command + command_dither(1:DM.activeActNum); % for open loop estimation case
+            
+            DM1command = DM1command_DH + command + command_dither(1:DM.activeActNum); % for open loop estimation case
 
             data.DMcommand(:, itr) = [DM1command; DM2command_DH]; % unused DM gets dark hole command
             
             command_dither(DM.activeActNum + 1 : end) = 0; %set unused mirror commands to zero
         case '2'
-            DM2command = DM2command + command + command_dither(DM.activeActNum + 1 : end); %%
+%             DM2command = DM2command + command + command_dither(DM.activeActNum + 1 : end); %%
             
-%             data.DMcommand(:, itr) = [zeros(DM.activeActNum,1);DM2command];
-            
+%             DM2command = command + command_dither(DM.activeActNum + 1 : end); % for open loop estimation case         
+
+            DM2command = DM2command_DH + command + command_dither(DM.activeActNum + 1 : end); % for open loop estimation case         
             data.DMcommand(:, itr) = [DM1command_DH;DM2command]; % unused DM gets dark hole command
             
             command_dither(1:DM.activeActNum) = 0;
         case 'both'
-            DM1command = DM1command + command(1:DM.activeActNum) + command_dither(1:DM.activeActNum);
-            DM2command = DM2command + command(DM.activeActNum + 1 : end) + command_dither(DM.activeActNum + 1 : end);
+%             DM1command = DM1command + command(1:DM.activeActNum) + command_dither(1:DM.activeActNum);
+%             DM2command = DM2command + command(DM.activeActNum + 1 : end) + command_dither(DM.activeActNum + 1 : end);
+%             
+            DM1command = DM1command_DH + command(1:DM.activeActNum) + command_dither(1:DM.activeActNum);
+            DM2command = DM2command_DH + command(DM.activeActNum + 1 : end) + command_dither(DM.activeActNum + 1 : end);
             
             if itr>1
                 data.DMcommand(:, itr) = [DM1command; DM2command] - data.Driftcommand(:,itr-1) ;
@@ -224,14 +230,14 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     surf_drift = zeros(DM.DMmesh);
     surf_drift(marginNpixel+1 : end-marginNpixel, marginNpixel+1 : end-marginNpixel) = ...
         target.driftDisp*(rand([DM.DMmesh - 2 * marginNpixel,1])-0.5);
-        
+%     command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP2, PAIR WITH DITHER OP2
+      
 %     command_drift = 0.1*height2voltage(surf_drift, DM, target.driftDM,
 %     5); %used for 300 iter case initially
-    command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP2, PAIR WITH DITHER OP2
 %     command_drift = 0.01*height2voltage(surf_drift, DM, target.driftDM, 5); %OP2, PAIR WITH DITHER OP2
-%     command_drift = 0.1*height2voltage(surf_drift, DM, target.driftDM, 5); %OP1, PAIR WITH DITHER OP1
+%     command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP1, PAIR WITH DITHER OP1
 
-%     command_drift = zeros(DM.activeActNum,1);
+    command_drift = zeros(DM.activeActNum,1);
     
     switch target.driftDM % determine DM that will introduce drift and update command, this command DOES NOT get stored in "command"
         case '1'
@@ -270,6 +276,28 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
 
         end
     end
+%% Open Loop Calculation
+    switch target.driftDM
+        case '1'
+%             EfocalStar_openloop = data.EfocalEst0 + model.G1 * sum(data.Driftcommand(1:DM.activeActNum,1:itr),2);
+%             Iopenloop = abs(EfocalStar_openloop).^2;
+            [EfocalStar_openloop_full, EfocalPlanet_openloop, Iopenloop_full] = ...
+                opticalModel(target, DM, coronagraph, camera, ...
+                sum(data.Driftcommand(1:DM.activeActNum,1:itr), 2) + data_DH.DMcommand(1:DM.activeActNum,end), ...
+                data_DH.DMcommand(DM.activeActNum + 1 : end,end));
+            EfocalStar_openloop = EfocalStar_openloop_full(darkHole.pixelIndex);
+            Iopenloop = Iopenloop_full(darkHole.pixelIndex);
+            
+            
+        case '2'
+            EfocalStar_openloop = data.EfocalEst0+ model.G2 * sum(data.Driftcommand(DM.activeActNum+1:end,1:itr),2);
+            Iopenloop = abs(EfocalStar_openloop).^2;
+        otherwise
+            disp('You can only use the first DM or second DM for speckle drift.');
+            return;
+    end
+    data.EfocalEstOpenLoop(:,itr) = EfocalStar_openloop;
+    data.estOpenLoopContrast(itr,1) = mean(Iopenloop);
     %% estimate the electric field
     disp(['Running ', estimator.type, ' estimator ...']);
     
@@ -325,7 +353,7 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
                     % **
 
                     % Real calc
-                    [EfocalEst, IincoEst, data] = EKF3b(u, image, darkHole, model, estimator, controller, data);
+                    [EfocalEst, IincoEst, data] = EKF3b_OL(u, image, darkHole, model, estimator, controller, data);
                 end
             end
             %                 [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data);
@@ -345,6 +373,8 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
         data.imageSet{itr} = image;
         data.probeSet{itr} = u;
     end
+    
+    % NEED TO CHANGE ALL OF THIS TO BE CLOSED LOOP E FIELD?
     data.EfocalEst(:, itr) = EfocalEst;
     data.IincoEst(:, itr) = IincoEst;
     IfocalEst = abs(EfocalEst).^2;
@@ -370,28 +400,7 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     data.measuredContrastMax(itr) = max(I(darkHole.pixelIndex));
     data.measuredContrastStd(itr) = std(I(darkHole.pixelIndex));
     disp(['The measured average contrast in the dark holes after ', num2str(itr), ' iterations is ', num2str(data.measuredContrastAverage(itr))]);
-    %% Open Loop Calculation
-    switch target.driftDM
-        case '1'
-            EfocalStar_openloop = data.EfocalEst0 + model.G1 * sum(data.Driftcommand(1:DM.activeActNum,1:itr),2);
-            Iopenloop = abs(EfocalStar_openloop).^2;
-%             [EfocalStar_openloop_full, EfocalPlanet_openloop, Iopenloop_full] = ...
-%                 opticalModel(target, DM, coronagraph, camera, ...
-%                 sum(data.Driftcommand(1:DM.activeActNum,1:itr), 2) + data_DH.DMcommand(1:DM.activeActNum,end), ...
-%                 data_DH.DMcommand(DM.activeActNum + 1 : end,end));
-%             EfocalStar_openloop = EfocalStar_openloop_full(darkHole.pixelIndex);
-%             Iopenloop = Iopenloop_full(darkHole.pixelIndex);
-%             
-            
-        case '2'
-            EfocalStar_openloop = data.EfocalEst0+ model.G2 * sum(data.Driftcommand(DM.activeActNum+1:end,1:itr),2);
-            Iopenloop = abs(EfocalStar_openloop).^2;
-        otherwise
-            disp('You can only use the first DM or second DM for speckle drift.');
-            return;
-    end
-    data.EfocalEstOpenLoop(:,itr) = EfocalStar_openloop;
-    data.estOpenLoopContrast(itr,1) = mean(Iopenloop);
+
     %% Probed comparison storage
     data.EfocalEstProbed(:,itr) = EfocalEstProbed;
     
@@ -444,12 +453,15 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     %% Visualizations
     % focal plane estimations in log scale after giving control commands
     Plot_SpeckleMaint
+    
 end
 
 
 %% Re-plot data
 
 for itr = 1:Nitr
-    
+%    dEmodel = model.G2 * (data.DMcommand(DM.activeActNum + 1 : end,itr) + data.Dithercommand(DM.activeActNum + 1 : end,itr)); 
+%    EfocalEstNew = data.EfocalEst(:,itr) + dEmodel;
+%    data.estimatedContrastAverage(itr) = ;
    Plot_SpeckleMaint 
 end

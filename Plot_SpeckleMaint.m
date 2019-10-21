@@ -28,45 +28,89 @@ drawnow
 
 figure(24); plot(DM.activeActNum+1:2*DM.activeActNum,data.efcCommand(:,itr),'r',...
     1:2*DM.activeActNum,data.Dithercommand(:, itr),'b',...
-     1:2*DM.activeActNum,data.Driftcommand(:,itr),'g');
+    1:2*DM.activeActNum,data.Driftcommand(:,itr),'g');
 axis tight
 legend('DM Control Command','Dither Command','Drift Command');
 drawnow
 
 %% Probed E field estimation vs unprobed E field estimation
-figure(7)
-subplot(1,2,1)
-plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
-    1:darkHole.pixelNum,real(data.EfocalEstProbed(:,itr)),'b',...
-    1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'g');
-
-% plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
-%     1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'g');
-axis tight
-legend('Dither','Probed','Perfect');
-xlabel('iteration')
-ylabel('Estimated Electric Field')
-title({'Comparison bt probed E estimation and unprobed E estimation (unprobed used for control)',' '})
-% 
-EfocalEst_err(itr,1) = mean(abs( (real(dataAlt.EfocalEst(:,itr)) - real(data.EfocalEst(:,itr)))))...
-    ./ mean(abs(real(dataAlt.EfocalEst(:,itr)) ));
-
-EfocalEstPerf_err(itr,1) = mean(abs( (real(data.EfocalPerfect(:,itr)) - real(data.EfocalEst(:,itr)))))...
-    ./ mean(abs(real(data.EfocalPerfect(:,itr)) ));
-
-EfocalEstProbed_err(itr,1) = mean(abs( (real(data.EfocalPerfect(:,itr)) - real(dataAlt.EfocalEst(:,itr)))))...
-    ./ mean(abs(real(data.EfocalPerfect(:,itr)) ));
-
-subplot(1,2,2)
-plot(1:itr,EfocalEst_err(1:itr),'r+-',1:itr,EfocalEstPerf_err(1:itr),'b+-',1:itr,EfocalEstProbed_err(1:itr),'g+-');
-% plot(1:itr,EfocalEstPerf_err(1:itr),'b+-');
-axis tight
-xlabel('iteration')
-ylabel('Average |Relative Error|')
-title({'Average Relative Error bt Probed and Unprobed E-Field Estimation',' '})
-legend('Dither-Probed','Dither-Perfect','Probed-Perfect')
-ylim([0,1])
-drawnow
+if estimator.CL == 1
+    figure(7)
+    subplot(1,2,1)
+    plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
+        1:darkHole.pixelNum,real(data.EfocalEstProbed(:,itr)),'b',...
+        1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'g');
+    
+    % plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
+    %     1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'g');
+    axis tight
+    legend('Dither','Probed','Perfect');
+    xlabel('iteration')
+    ylabel('Estimated Electric Field')
+    title({'Comparison bt probed E estimation and unprobed E estimation (unprobed used for control)',' '})
+    %
+    EfocalEst_err(itr,1) = mean(abs( (real(dataAlt.EfocalEst(:,itr)) - real(data.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(dataAlt.EfocalEst(:,itr)) ));
+    
+    EfocalEstPerf_err(itr,1) = mean(abs( (real(data.EfocalPerfect(:,itr)) - real(data.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(data.EfocalPerfect(:,itr)) ));
+    
+    EfocalEstProbed_err(itr,1) = mean(abs( (real(data.EfocalPerfect(:,itr)) - real(dataAlt.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(data.EfocalPerfect(:,itr)) ));
+    
+    subplot(1,2,2)
+    plot(1:itr,EfocalEst_err(1:itr),'r+-',1:itr,EfocalEstPerf_err(1:itr),'b+-',1:itr,EfocalEstProbed_err(1:itr),'g+-');
+    % plot(1:itr,EfocalEstPerf_err(1:itr),'b+-');
+    axis tight
+    xlabel('iteration')
+    ylabel('Average |Relative Error|')
+    title({'Average Relative Error bt Probed and Unprobed E-Field Estimation',' '})
+    legend('Dither-Probed','Dither-Perfect','Probed-Perfect')
+    ylim([0,1])
+    drawnow
+else
+    figure(7)
+    subplot(1,2,1)
+    plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
+        1:darkHole.pixelNum,real(data.EfocalEstProbed(:,itr)),'b',...
+        1:darkHole.pixelNum,real(data.EfocalEstOpenLoop(:,itr)),'g');
+    
+    % plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
+    %     1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'g');
+    axis tight
+    legend('Dither','Probed','Perfect OL');
+    xlabel('iteration')
+    ylabel('Estimated OL Electric Field')
+    title({'Comparison bt probed E estimation and unprobed E estimation (unprobed used for control)',' '})
+    %
+    EfocalEst_err(itr,1) = mean(abs( (real(dataAlt.EfocalEst(:,itr)) - real(data.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(dataAlt.EfocalEst(:,itr)) ));
+    
+    EfocalEstPerf_err_tot(:,itr) = (abs( (real(data.EfocalEstOpenLoop(:,itr)) - real(data.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(data.EfocalEstOpenLoop(:,itr)) ));
+    
+    EfocalEstPerf_err(itr,1) = mean(EfocalEstPerf_err_tot(:,itr));
+    
+    EfocalEstProbed_err(itr,1) = mean(abs( (real(data.EfocalEstOpenLoop(:,itr)) - real(dataAlt.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(data.EfocalEstOpenLoop(:,itr)) ));
+    
+    subplot(1,2,2)
+    plot(1:itr,EfocalEst_err(1:itr),'r+-',1:itr,EfocalEstPerf_err(1:itr),'b+-',1:itr,EfocalEstProbed_err(1:itr),'g+-');
+    % plot(1:itr,EfocalEstPerf_err(1:itr),'b+-');
+    axis tight
+    xlabel('iteration')
+    ylabel('Average |Relative Error|')
+    title({'Average Relative Error bt Probed and Unprobed OL E-Field Estimation',' '})
+    legend('Dither-Probed','Dither-Perfect','Probed-Perfect')
+    ylim([0,1])
+    drawnow
+    
+    figure(77);
+    plot(EfocalEstPerf_err_tot(:,itr))
+    title('EKF Estimate -  OL Model Calc')
+    axis tight
+    drawnow
+end
 
 %% measured and modelled change of focal plane image
 
@@ -130,6 +174,58 @@ drawnow
 % axis tight
 % legend('EOL_1','EhatOL_1');
 % title('Step 1 Open Loop E Field');
+
+%% Open loop estimation case
+if itr >1
+    EhatCL_10_full = [real(data.EfocalEst(:,itr-1)); imag(data.EfocalEst(:,itr-1))] + ...
+        G * (data.DMcommand(DM.activeActNum + 1 : end,itr)); %FOR DM2 AS DITHER DM
+    EhatCL_10 = EhatCL_10_full(1:darkHole.pixelNum,1); % [real;imag]
+    
+    IhatCL10 = abs(EhatCL_10).^2;
+    ICL10 = image(darkHole.pixelIndex);
+    
+    dEmodel_OL = model.G2 * (data.DMcommand(DM.activeActNum + 1 : end,itr));
+    EhatCL_10_viaOL = data.EfocalEstOpenLoop(:,itr) + dEmodel_OL;
+    IhatCL_10_viaOL = abs(EhatCL_10_viaOL).^2;
+    
+    
+    figure(43);
+    
+    subplot(2,2,1)%wrong
+    plot(1:darkHole.pixelNum,real(data.EfocalEstOpenLoop(:,itr-1)),'r',...
+        1:darkHole.pixelNum,real(data.EfocalEst(:,itr-1)),'b');
+    axis tight
+    legend('EOL_{9}','EhatOL_{9}');
+    title('Step 10 Initial Open Loop');
+    
+    subplot(2,2,2)
+    plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'r',...
+        1:darkHole.pixelNum,EhatCL_10,'b'); % IS THIS ONE RIGHT
+    axis tight
+    legend('ECL_{10}','EhatCL_{10} (post command and dither)');
+    title('Step 10 Closed Loop E field');
+    
+    % subplot(2,2,3)
+    % plot(1:darkHole.pixelNum,real(ICL10),'r',...
+    %     1:darkHole.pixelNum,IhatCL10,'b');
+    % axis tight
+    % legend('ICL_{10}','IhatCL_{10}');
+    % title('Step 10 Closed Loop Intensity');
+    subplot(2,2,3)
+    plot(1:darkHole.pixelNum,real(ICL10),'r',...
+        1:darkHole.pixelNum,IhatCL10,'b')%,1:darkHole.pixelNum,IhatCL_10_viaOL,'c');
+    axis tight
+    % legend('ICL_{10}','IhatCL_{10 via OL}');
+    legend('ICL_{10}','IhatCL_{10}','IhatCL_{10 via OL}');
+    title('Step 10 Closed Loop Intensity');
+    
+    subplot(2,2,4)
+    plot(1:darkHole.pixelNum,real(data.EfocalEstOpenLoop(:,itr)),'r',...
+        1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'b');
+    axis tight
+    legend('EOL_{10}','EhatOL_{10}');
+    title('Step 10 Open Loop E Field');
+end
 
 %%
 if itr == Nitr
