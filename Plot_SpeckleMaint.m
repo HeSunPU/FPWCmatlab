@@ -176,7 +176,7 @@ end
 % title('Step 1 Open Loop E Field');
 
 %% Open loop estimation case
-if itr >1
+if itr >1 && estimator.CL == 0
     EhatCL_10_full = [real(data.EfocalEst(:,itr-1)); imag(data.EfocalEst(:,itr-1))] + ...
         G * (data.DMcommand(DM.activeActNum + 1 : end,itr)); %FOR DM2 AS DITHER DM
     EhatCL_10 = EhatCL_10_full(1:darkHole.pixelNum,1); % [real;imag]
@@ -228,7 +228,7 @@ if itr >1
 end
 
 %%
-if itr == Nitr
+if itr > 1 && estimator.CL == 1
     EhatCL_10_full = [real(data.EfocalEst(:,itr-1)); imag(data.EfocalEst(:,itr-1))] + ...
         G * (data.efcCommand(:,itr) +data.Dithercommand(DM.activeActNum + 1 :end, itr)); %FOR DM2 AS DITHER DM
     EhatCL_10 = EhatCL_10_full(1:darkHole.pixelNum,1); % [real;imag]
@@ -236,50 +236,71 @@ if itr == Nitr
     IhatCL10 = abs(EhatCL_10).^2;
     ICL10 = image(darkHole.pixelIndex);
     
-    dEmodel_OL = model.G2 * (sum(data.efcCommand(:,1:itr),2) + sum(data.Dithercommand(DM.activeActNum + 1 : end,1:itr),2));
-    EhatCL_10_viaOL = data.EfocalEstOpenLoop(:,itr) + dEmodel_OL;
+    dEmodel_CL = model.G2 * (sum(data.efcCommand(:,1:itr),2) + sum(data.Dithercommand(DM.activeActNum + 1 : end,1:itr),2));
+    
+    EhatOL_10_viaCL = data.EfocalEst(:,itr) - dEmodel_CL; % Current iterations closed loop estimate minus total command applied to DM
+    EhatOL_10_viaProbedCL = dataAlt.EfocalEst(:,itr) - dEmodel_CL;
+    EhatOL_10_viaE0Drift = data.EfocalEst0 + model.G1*(sum(data.Driftcommand(1 : DM.activeActNum,1:itr),2));
+        
+    EhatCL_10_viaOL = data.EfocalEstOpenLoop(:,itr) + dEmodel_CL;
+    
     IhatCL_10_viaOL = abs(EhatCL_10_viaOL).^2;
     
+    EhatOL_err_viaCL = abs((real(data.EfocalEstOpenLoop(:,itr)) - ...
+        real(EhatOL_10_viaCL))./real(data.EfocalEstOpenLoop(:,itr)));
+    EhatOL_err_viaE0Drift = abs((real(data.EfocalEstOpenLoop(:,itr)) - ...
+        real(EhatOL_10_viaE0Drift))./real(data.EfocalEstOpenLoop(:,itr)));
     
-    figure(43);
+    figure(34);
     
     subplot(2,2,1)%wrong
     plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr-1)),'r',...
         1:darkHole.pixelNum,real(data.EfocalEst(:,itr-1)),'b');
     axis tight
-    legend('EOL_{10}','EhatOL_{10}');
-    title('Step 10 Open Loop');
+    legend('ECL_{i-1}','EhatCL_{i-1}');
+    title('Step i-1 Closed Loop');
     
     subplot(2,2,2)
     plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'r',...
         1:darkHole.pixelNum,EhatCL_10,'b'); % IS THIS ONE RIGHT
     axis tight
-    legend('ECL_{10}','EhatCL_{10} (post command and dither)');
-    title('Step 10 Closed Loop E field');
+    legend('ECL_{i}','EhatCL_{i} (post command and dither)');
+    title('Step i Closed Loop E field');
     
-    % subplot(2,2,3)
-    % plot(1:darkHole.pixelNum,real(ICL10),'r',...
-    %     1:darkHole.pixelNum,IhatCL10,'b');
-    % axis tight
-    % legend('ICL_{10}','IhatCL_{10}');
-    % title('Step 10 Closed Loop Intensity');
     subplot(2,2,3)
     plot(1:darkHole.pixelNum,real(ICL10),'r',...
         1:darkHole.pixelNum,IhatCL10,'b')%,1:darkHole.pixelNum,IhatCL_10_viaOL,'c');
     axis tight
     % legend('ICL_{10}','IhatCL_{10 via OL}');
-    legend('ICL_{10}','IhatCL_{10}','IhatCL_{10 via OL}');
-    title('Step 10 Closed Loop Intensity');
-    
+    legend('ICL_{i}','IhatCL_{i}');
+    title('Step i Closed Loop Intensity');
+
     subplot(2,2,4)
-    plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'r',...
-        1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'b');
+    plot(1:darkHole.pixelNum,real(data.EfocalEstOpenLoop(:,itr)),'r',...
+        1:darkHole.pixelNum,real(EhatOL_10_viaE0Drift),'r--',...
+        1:darkHole.pixelNum,real(EhatOL_10_viaCL),'b',...
+        1:darkHole.pixelNum, real(EhatOL_10_viaProbedCL),'g');
     axis tight
-    legend('EOL_{10}','EhatOL_{10}');
-    title('Step 10 Open Loop E Field');
+    legend('EOL_{i}','EOL_{i|E0,udrift}','EhatOL_{i}','EhatOL_{i|probe}');
+    title('Step i Open Loop E Field');
+    
+    figure(44);
+    plot(1:darkHole.pixelNum,EhatOL_err_viaE0Drift,'r--',...
+        1:darkHole.pixelNum,EhatOL_err_viaCL,'b',...
+        1:darkHole.pixelNum,EhatOL_err_viaE0Drift+ EhatOL_err_viaCL, 'g');
+    xlabel('Pixel')
+    ylabel('Relative Error')
+    legend('OL Error via Drift','OL Error via CL','Total Error')
+    axis tight
+%     
+%     DMcommand_mean = mean(abs(cumsum(data.DMcommand(DM.activeActNum + 1 : end,:),2)));
+%     Driftcommand_mean = mean(abs(cumsum(data.Driftcommand(1:DM.activeActNum,:),2)));
+%     
+%     figure(65);
+%     plot(1:Nitr,DMcommand_mean,1:Nitr,Driftcommand_mean)
+%     legend('Command','Drift')
     
     
-    % err_10 = mean(abs(real(data.EfocalPerfect(:,end)) - real(data.EfocalEst(:,end))))./...
-    %     mean(abs(real(data.EfocalPerfect(:,end))));
+
 end
 

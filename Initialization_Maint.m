@@ -496,7 +496,7 @@ end
 %sfr added
 if strcmpi(estimator.type, 'ekf_speckle')
     estimator.ditherStd = 2e-4 ; %this should change with contrast?
-    estimator.CL = 0; % if 1, EKF estimates the closed loop field, if 0 EKF estimates the open loop field
+    estimator.CL = 1; % if 1, EKF estimates the closed loop field, if 0 EKF estimates the open loop field
 end
 
 %% Initialize the linear system identification algorithm
@@ -679,6 +679,8 @@ elseif strcmpi(controller.type, 'EFC')
 end
 data.estimator = estimator;
 data.probe_exposure = zeros(Nitr, 1);
+data.image_exposure = zeros(Nitr, 1);
+
 if strcmpi(simOrLab, 'simulation')
     data.EfocalPerfect = zeros(darkHole.pixelNum, Nitr);
 end

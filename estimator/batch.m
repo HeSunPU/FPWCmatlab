@@ -1,4 +1,4 @@
-function [EfocalEst, IincoEst, data] = batch(u, image, darkHole, model, estimator, data, kWavelength)
+ function [EfocalEst, IincoEst, data] = batch(u, image, darkHole, model, estimator, data, kWavelength)
 %%
 % The pair-wise batch process estimator
 % Developed by He Sun on Feb. 17, 2017

@@ -3,7 +3,7 @@
 
 %% Set number of iterations
 
-Nitr = 3;
+Nitr = 100;
 cRange = [-8, -4]; %[-12, -3];% the range for display
 simOrLab ='simulation';
 
@@ -105,7 +105,9 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
         camera.exposure = 0.5;
         camera.exposure0 = 0.5;
     end
+    
     data.itr = itr;
+    data.image_exposure(itr,1) = camera.exposure;
     disp('***********************************************************************');
     disp(['Now we are running iteration ', num2str(itr) ,'/', num2str(Nitr)]);
     disp('***********************************************************************');
@@ -187,21 +189,25 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     
     switch controller.whichDM
         case '1'
-%             DM1command = DM1command + command + command_dither(1:DM.activeActNum);
-            
-%             DM1command = command + command_dither(1:DM.activeActNum); % for open loop estimation case
-            
-            DM1command = DM1command_DH + command + command_dither(1:DM.activeActNum); % for open loop estimation case
-
+            if estimator.CL == 1 % if estimator is estimating closed loop or open loop field
+                DM1command = DM1command + command + command_dither(1:DM.activeActNum);
+            else
+                %             DM1command = command + command_dither(1:DM.activeActNum); % for open loop estimation case
+                
+                DM1command = DM1command_DH + command + command_dither(1:DM.activeActNum); % for open loop estimation case
+            end
             data.DMcommand(:, itr) = [DM1command; DM2command_DH]; % unused DM gets dark hole command
             
             command_dither(DM.activeActNum + 1 : end) = 0; %set unused mirror commands to zero
         case '2'
-%             DM2command = DM2command + command + command_dither(DM.activeActNum + 1 : end); %%
-            
+            if estimator.CL == 1
+                DM2command = DM2command + command + command_dither(DM.activeActNum + 1 : end); %%
+            else
 %             DM2command = command + command_dither(DM.activeActNum + 1 : end); % for open loop estimation case         
 
-            DM2command = DM2command_DH + command + command_dither(DM.activeActNum + 1 : end); % for open loop estimation case         
+                DM2command = DM2command_DH + command + command_dither(DM.activeActNum + 1 : end); % for open loop estimation case         
+            end
+            
             data.DMcommand(:, itr) = [DM1command_DH;DM2command]; % unused DM gets dark hole command
             
             command_dither(1:DM.activeActNum) = 0;
@@ -230,14 +236,14 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     surf_drift = zeros(DM.DMmesh);
     surf_drift(marginNpixel+1 : end-marginNpixel, marginNpixel+1 : end-marginNpixel) = ...
         target.driftDisp*(rand([DM.DMmesh - 2 * marginNpixel,1])-0.5);
+    
 %     command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP2, PAIR WITH DITHER OP2
       
-%     command_drift = 0.1*height2voltage(surf_drift, DM, target.driftDM,
-%     5); %used for 300 iter case initially
+    command_drift = 0.5*height2voltage(surf_drift, DM, target.driftDM, 5); %used for 300 iter case initially
 %     command_drift = 0.01*height2voltage(surf_drift, DM, target.driftDM, 5); %OP2, PAIR WITH DITHER OP2
 %     command_drift = 0.05*height2voltage(surf_drift, DM, target.driftDM, 5); %OP1, PAIR WITH DITHER OP1
 
-    command_drift = zeros(DM.activeActNum,1);
+%     command_drift = zeros(DM.activeActNum,1);
     
     switch target.driftDM % determine DM that will introduce drift and update command, this command DOES NOT get stored in "command"
         case '1'
@@ -298,7 +304,8 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     end
     data.EfocalEstOpenLoop(:,itr) = EfocalStar_openloop;
     data.estOpenLoopContrast(itr,1) = mean(Iopenloop);
-    %% estimate the electric field
+    
+    %% Estimate the electric field
     disp(['Running ', estimator.type, ' estimator ...']);
     
     % Non-broadband case
@@ -344,6 +351,7 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
                     % **
                     
                     % Real calc
+                    
                     [EfocalEst, IincoEst, data] = EKF2_basic(u, image, darkHole, model, estimator, controller, data);
                 else
                     % ** Only for comparison, remove later **
@@ -353,7 +361,11 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
                     % **
 
                     % Real calc
-                    [EfocalEst, IincoEst, data] = EKF3b_OL(u, image, darkHole, model, estimator, controller, data);
+%                     if estimator.CL == 1
+                     [EfocalEst, IincoEst, data] = EKF3b(u, image, darkHole, model, estimator, controller, data);
+%                     else
+%                         [EfocalEst, IincoEst, data] = EKF3b_OL(u, image, darkHole, model, estimator, controller, data);
+%                     end
                 end
             end
             %                 [EfocalEst, IincoEst, data] = EKF(u, image, darkHole, model, estimator, controller, data);

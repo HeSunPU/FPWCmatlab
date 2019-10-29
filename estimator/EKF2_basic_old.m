@@ -1,14 +1,13 @@
-function [EfocalEst, IincoEst, data] = EKF2_basic(u, image, darkHole, model, estimator, controller, data, kWavelength)
+function [EfocalEst, IincoEst, data] = EKF2b(u, image, darkHole, model, estimator, controller, data, kWavelength)
 %% The pixel-wise extended Kalman filter estimator with no non-probe image
 % Developed by He Sun on Feb. 24, 2017
-% Revised by Susan Redmond Oct 9, 2019
+% Revised by Susan Redmond July 23, 2019
 % No probing images taken or used in this revised version
 %
 % EfocalEst - the estimated coherent focal plane electric field
 % IincoEst - the estimated incoherent focal plane intensity
 % u - 0 since no probing happens here
-% image - the image used for wavefront estimation; taken with the dither
-% command
+% image - the images used for wavefront estimation
 % darkHole - defines the parameters of the dark holes
 % model - the control Jacobian and other model related variables
 % controller - the properties of the controller
