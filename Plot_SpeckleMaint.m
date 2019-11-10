@@ -4,17 +4,32 @@
 if target.broadBandControl
     figure(1), imagesc(log10(abs(mean(data.I(:, :, :, itr), 3)))), colorbar
 else
-    figure(1), imagesc(log10(abs(I))), colorbar;
+    figure(1), subplot(2,3,1), imagesc(log10(abs(I))), colorbar;
 end
 caxis(cRange);
 title(['After control iteration ', num2str(itr)]);
-drawnow
+
+subplot(2,3,2), imagesc(log10(abs(dImeasured2D))), colorbar;
+title('Measured Intensity Change');
+caxis(cRange);
+subplot(2,3,5), imagesc(log10(abs(dImodel2D))), colorbar;
+title('Model-predicted Intensity Change');
+caxis(cRange);
+    
+subplot(2,3,3), imagesc(log10(abs(IincoEst2D))), colorbar;
+caxis(cRange);
+title(['Incoherent light after control iteration ', num2str(itr)]);
+
+subplot(2,3,6), imagesc(log10(abs(IcoEst2D))), colorbar;
+caxis(cRange);
+title(['Coherent light after control iteration ', num2str(itr)]);
+
 
 %% contrast correction curve - average
 if target.broadBandControl
-    figure(2), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o' ,0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s', 0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
+%     figure(2), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o' ,0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s', 0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
 else
-    figure(2), semilogy(0:itr, [data.contrast0; data.measuredContrastAverage(1:itr)],'-o',...
+    subplot(2,3,4), semilogy(0:itr, [data.contrast0; data.measuredContrastAverage(1:itr)],'-o',...
         0:itr, [data.estimatedContrastAverage0; data.estimatedContrastAverage(1:itr)],'-s', ...
         0:itr, [data.estimatedIncoherentAverage0; data.estimatedIncoherentAverage(1:itr)], '-^',...
         0:itr,[data.estimatedContrastAverage0; data.estOpenLoopContrast(1:itr)],'-d');
@@ -34,7 +49,7 @@ legend('DM Control Command','Dither Command','Drift Command');
 drawnow
 
 %% Probed E field estimation vs unprobed E field estimation
-if estimator.CL == 1
+if estimator.CL == 1 && strcmpi(simOrLab, 'simulation')
     figure(7)
     subplot(1,2,1)
     plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
@@ -176,7 +191,7 @@ end
 % title('Step 1 Open Loop E Field');
 
 %% Open loop estimation case
-if itr >1 && estimator.CL == 0
+if itr >1 && estimator.CL == 0 && strcmpi(simOrLab, 'simulation')
     EhatCL_10_full = [real(data.EfocalEst(:,itr-1)); imag(data.EfocalEst(:,itr-1))] + ...
         G * (data.DMcommand(DM.activeActNum + 1 : end,itr)); %FOR DM2 AS DITHER DM
     EhatCL_10 = EhatCL_10_full(1:darkHole.pixelNum,1); % [real;imag]
@@ -228,7 +243,7 @@ if itr >1 && estimator.CL == 0
 end
 
 %%
-if itr > 1 && estimator.CL == 1
+if itr > 1 && estimator.CL == 1 && strcmpi(simOrLab, 'simulation')
     EhatCL_10_full = [real(data.EfocalEst(:,itr-1)); imag(data.EfocalEst(:,itr-1))] + ...
         G * (data.efcCommand(:,itr) +data.Dithercommand(DM.activeActNum + 1 :end, itr)); %FOR DM2 AS DITHER DM
     EhatCL_10 = EhatCL_10_full(1:darkHole.pixelNum,1); % [real;imag]
@@ -237,12 +252,13 @@ if itr > 1 && estimator.CL == 1
     ICL10 = image(darkHole.pixelIndex);
     
     dEmodel_CL = model.G2 * (sum(data.efcCommand(:,1:itr),2) + sum(data.Dithercommand(DM.activeActNum + 1 : end,1:itr),2));
+    EhatCL_10_viaOL = data.EfocalEstOpenLoop(:,itr) + dEmodel_CL;
     
     EhatOL_10_viaCL = data.EfocalEst(:,itr) - dEmodel_CL; % Current iterations closed loop estimate minus total command applied to DM
     EhatOL_10_viaProbedCL = dataAlt.EfocalEst(:,itr) - dEmodel_CL;
     EhatOL_10_viaE0Drift = data.EfocalEst0 + model.G1*(sum(data.Driftcommand(1 : DM.activeActNum,1:itr),2));
         
-    EhatCL_10_viaOL = data.EfocalEstOpenLoop(:,itr) + dEmodel_CL;
+    
     
     IhatCL_10_viaOL = abs(EhatCL_10_viaOL).^2;
     
@@ -257,22 +273,24 @@ if itr > 1 && estimator.CL == 1
     plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr-1)),'r',...
         1:darkHole.pixelNum,real(data.EfocalEst(:,itr-1)),'b');
     axis tight
-    legend('ECL_{i-1}','EhatCL_{i-1}');
+    legend('$E^{CL}_{i-1} = model$','$\hat{E}^{CL}_{i-1} =$ old EKF output','interpreter','latex');
     title('Step i-1 Closed Loop');
     
     subplot(2,2,2)
     plot(1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'r',...
         1:darkHole.pixelNum,EhatCL_10,'b'); % IS THIS ONE RIGHT
     axis tight
-    legend('ECL_{i}','EhatCL_{i} (post command and dither)');
+    legend('$E^{CL}_{i} = model$','$\hat{E}^{CL}_{i}|_{I^{CL}} =$ EKF output','interpreter','latex');
+%     legend('ECL_{i}','EhatCL_{i} (post command and dither)','interpreter','latex');
     title('Step i Closed Loop E field');
     
     subplot(2,2,3)
     plot(1:darkHole.pixelNum,real(ICL10),'r',...
-        1:darkHole.pixelNum,IhatCL10,'b')%,1:darkHole.pixelNum,IhatCL_10_viaOL,'c');
+        1:darkHole.pixelNum,IhatCL10,'b',1:darkHole.pixelNum,IhatCL_10_viaOL,'c');
     axis tight
     % legend('ICL_{10}','IhatCL_{10 via OL}');
-    legend('ICL_{i}','IhatCL_{i}');
+    legend('$I^{CL}_{i} = image $','$\hat{I}^{CL}_{i} = |\hat{E}^{CL}_i|^2$',...
+        '$\hat{I}^{CL via OL}_{i} = |\hat{E}^{OL}_{i} + G(u^{EFC}_i+u^{dither}_i)|^2$','interpreter','latex');
     title('Step i Closed Loop Intensity');
 
     subplot(2,2,4)
@@ -281,7 +299,8 @@ if itr > 1 && estimator.CL == 1
         1:darkHole.pixelNum,real(EhatOL_10_viaCL),'b',...
         1:darkHole.pixelNum, real(EhatOL_10_viaProbedCL),'g');
     axis tight
-    legend('EOL_{i}','EOL_{i|E0,udrift}','EhatOL_{i}','EhatOL_{i|probe}');
+    legend('$E^{OL}_{i}$','$\hat{E}^{OL}_{i}|_{E^{OL}_0,u^{drift}}$','$\hat{E}^{OL}_{i}$',...
+        '$\hat{E}^{OL}_{i}|_{I^{probe}}$','interpreter','latex');
     title('Step i Open Loop E Field');
     
     figure(44);
@@ -292,13 +311,22 @@ if itr > 1 && estimator.CL == 1
     ylabel('Relative Error')
     legend('OL Error via Drift','OL Error via CL','Total Error')
     axis tight
-%     
-%     DMcommand_mean = mean(abs(cumsum(data.DMcommand(DM.activeActNum + 1 : end,:),2)));
-%     Driftcommand_mean = mean(abs(cumsum(data.Driftcommand(1:DM.activeActNum,:),2)));
-%     
-%     figure(65);
-%     plot(1:Nitr,DMcommand_mean,1:Nitr,Driftcommand_mean)
-%     legend('Command','Drift')
+    
+    % Open loop E field estimation comparison
+    figure(55)
+    plot(1:darkHole.pixelNum,real(data.EfocalEstOpenLoop(:,itr)),'r',...
+        1:darkHole.pixelNum,real(EhatOL_10_viaE0Drift),'r--',...
+        1:darkHole.pixelNum,real(EhatOL_10_viaCL),'b',...
+        1:darkHole.pixelNum, real(EhatOL_10_viaProbedCL),'g');
+    axis tight
+    legend('$E^{OL}_{i}$','$\hat{E}^{OL}_0 + G\sum_{1}^{i} u^{drift}_i$',...
+        '$\hat{E}^{CL}_{i} - G\sum_{1}^{i}(u^{EFC}_i + u^{dith}_i)$',...
+        '$\hat{E}^{CL_p}_{i} - G\sum_{1}^{i}(u^{EFC}_i + u^{dith}_i)$','interpreter','latex','fontsize',14) 
+    title('Step i Open Loop E Field and Estimation Methods');
+    xlabel('Pixel')
+    ylabel('Re(E field)')
+    
+ 
     
     
 

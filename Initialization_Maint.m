@@ -207,7 +207,7 @@ camera.adaptive_exposure = 0; % 1 stands for adapting camera exposure time for e
 target.star = 1; % 1 for 'on', 0 for 'off'
 target.planet = 0; % 1 for 'on', 0 for 'off'
 target.broadBandControl = 0;%1; % broadband control or monochromatic control
-target.planetContrast = 1e-8; % the contrast of planet compared with star
+target.planetContrast = 1e-5; % the contrast of planet compared with star
 target.starWavelength = 635e-9; %658e-9;% Unit: meters
 target.starWavelengthBroad = 605e-9:10e-9:665e-9; % The broadband wavelengths
 target.broadSampleNum = length(target.starWavelengthBroad); % The length of broadband wavelengths
@@ -219,8 +219,11 @@ target.flux = 1.878e+09;%1.5474e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977
 % sfr added
 target.driftDM = '1';%'1'; %which DM is used to introduce the speckle drift
 % target.driftcmd = zeros(DM.activeActNum,Nitr);
-% target.driftDisp = 1.2e-9; % max drift disp on mirror face in m
+target.driftImages = 3; % takes one image with just DH command and drift command every three images
 target.driftDisp = 1.2e-8; % max drift disp on mirror face in m
+target.driftScaling = 0.5;% 0.01; % scales drift commant wrt target drif displacement
+
+
 
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
 target.NdriftMode = 18;
@@ -287,7 +290,7 @@ elseif strcmpi(coronagraph.type, 'SPC')
     if target.planet
         minAngle = 0;
         maxAngle = target.separation * 2 * pi;
-        gap = (maxAngle - minAngle) / size(DM1shape, 2);
+        gap = (maxAngle - minAngle) / size(DM1shape, 2); % DM1 shape doesnt exist
         phase = ones(size(DM1shape)) * diag(minAngle + gap : gap : maxAngle);
         target.EinPlanet = sqrt(target.planetContrast) * exp(1i * phase);
     end
@@ -495,8 +498,10 @@ if estimator.activeSensing
 end
 %sfr added
 if strcmpi(estimator.type, 'ekf_speckle')
-    estimator.ditherStd = 2e-4 ; %this should change with contrast?
+%     estimator.ditherStd = 2e-4 ; %this should change with contrast?
+    estimator.ditherScaling = 10;%200 % used to scale dither command wrt EFC command
     estimator.CL = 1; % if 1, EKF estimates the closed loop field, if 0 EKF estimates the open loop field
+    estimator.check = 1; % if 1, takes probed images and does alternate esitmate of the electric field to compare with EKF
 end
 
 %% Initialize the linear system identification algorithm
@@ -624,8 +629,13 @@ elseif strcmpi(controller.type, 'EFC')
                 data.y = zeros(darkHole.pixelNum, estimator.NumImg, Nitr); % the difference images
             end
             if strcmpi(estimator.type, 'ekf_speckle')
+                data.EfocalPerfOpenLoop = zeros(darkHole.pixelNum, Nitr);
                 data.EfocalEstOpenLoop = zeros(darkHole.pixelNum, Nitr);
+                data.estOpenLoopContrast = zeros(Nitr, 1);
+                
                 data.efcCommand = zeros(DM.activeActNum, Nitr);
+                data.Driftcommand = zeros(2*DM.activeActNum,Nitr);
+                data.Dithercommand = zeros(2*DM.activeActNum,Nitr);
             end
         else
             if estimator.EKFpairProbing
@@ -653,6 +663,7 @@ elseif strcmpi(controller.type, 'EFC')
                     end
                 end
             case {'ekf', 'ukf', 'ekf_speckle'} %SUSAN ADDED THIS*******************************************
+                
                 if estimator.EKFincoherent
                     data.P = zeros(3, 3, darkHole.pixelNum, Nitr);
                 else
@@ -681,13 +692,20 @@ data.estimator = estimator;
 data.probe_exposure = zeros(Nitr, 1);
 data.image_exposure = zeros(Nitr, 1);
 
+% When running OL calc after DH maintenance
+Nimg_OL = floor(Nitr/target.driftImages);
+data.imageSetLiveOL = zeros(camera.Neta, camera.Nxi, Nimg_OL);
+data.measuredContrastAverageLiveOL = zeros(Nimg_OL,1);
+
+data.imageSetOL = zeros(camera.Neta, camera.Nxi, Nitr);
+data.measuredContrastAverageOL = zeros(Nitr,1);
+
+
+
 if strcmpi(simOrLab, 'simulation')
     data.EfocalPerfect = zeros(darkHole.pixelNum, Nitr);
 end
 
-data.Driftcommand = zeros(2*DM.activeActNum,Nitr);
-data.Dithercommand = zeros(2*DM.activeActNum,Nitr);
-data.estOpenLoopContrast = zeros(Nitr, 1);
 
 
 

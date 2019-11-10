@@ -513,6 +513,7 @@ for itr = 1 : Nitr
     figure(11), imagesc(log10(abs(IcoEst2D))), colorbar;
     caxis(cRange);
     title(['Coherent light after control iteration ', num2str(itr)]);
+    
     drawnow
     
     % focal plane images given control commands in log scale
