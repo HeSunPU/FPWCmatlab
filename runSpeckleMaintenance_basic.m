@@ -3,7 +3,7 @@
 
 %% Set number of iterations
 
-Nitr = 10;
+Nitr = 30;
 cRange = [-8, -4]; %[-12, -3];% the range for display
 simOrLab ='simulation';
 
@@ -38,12 +38,12 @@ data.contrast0 = data_DH.measuredContrastAverage(end); %check this one
 data.contrast0Max = data_DH.measuredContrastMax(end);
 data.contrast0Std = data_DH.measuredContrastStd(end);
 % estimate the starting contrast using batch process estimation
-data.EfocalEst0 = data_DH.EfocalEst(:,end);
-% data.EfocalEst0 = data_DH.EfocalPerfect(:, end) ; %THIS MIGHT BE WRONG
+% data.EfocalEst0 = data_DH.EfocalEst(:,end);
+data.EfocalEst0 = data_DH.EfocalPerfect(:, end) ; %THIS MIGHT BE WRONG
 
 
-data.IincoEst0 = data_DH.IincoEst(:,end);
-% data.IincoEst0 = zeros(size(data_DH.IincoEst(:,1))); %****
+% data.IincoEst0 = data_DH.IincoEst(:,end);
+data.IincoEst0 = zeros(size(data_DH.IincoEst(:,1))); %****
 
 data.estimatedContrastAverage0 = data_DH.estimatedContrastAverage(end);
 data.estimatedContrastMax0 = data_DH.estimatedContrastMax(end);
@@ -52,7 +52,7 @@ data.estimatedIncoherentAverage0 = data_DH.estimatedIncoherentAverage(end);
 
 
 EfocalEst = data.EfocalEst0;
-IincoEst = data.IincoEst;
+IincoEst = data.IincoEst0;
 IfocalEst = abs(EfocalEst).^2;
 contrastEst = mean(IfocalEst);
 incoherentEst = mean(data.IincoEst0);
@@ -256,10 +256,19 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
     switch target.driftDM
         case '1'
             if strcmpi(simOrLab, 'lab')
+                if ItrImgOL(ItrImgOL == itr)
+                    data.imageSetLiveOL(:,:,itrOL) = getImg(target, DM, coronagraph, camera, ...
+                        sum(data.Driftcommand(1:DM.activeActNum,1:itr), 2) + data_DH.DMcommand(1:DM.activeActNum,end),...
+                        data_DH.DMcommand(DM.activeActNum + 1 : end,end), simOrLab);
+                    
+                    data.measuredContrastAverageLiveOL(itrOL,1) = mean(data.imageSetLiveOL(:,:,itrOL));
+                    itrOL = itrOL+1;
+                end
                 EfocalStar_openloop = data.EfocalEst0 + ...
                     model.G1 * sum(data.Driftcommand(1:DM.activeActNum,1:itr),2);
                 Iopenloop = abs(EfocalStar_openloop).^2;
                 data.EfocalEstOpenLoop(:,itr) = EfocalStar_openloop;
+            
             else
                 [EfocalStar_openloop_full, EfocalPlanet_openloop, Iopenloop_full] = ...
                     opticalModel(target, DM, coronagraph, camera, ...
@@ -332,7 +341,7 @@ for itr = 1 : Nitr %should start this a 2 and set data.DMcommand(:,:,1) to initi
 
                     % Real calc
                     if estimator.CL == 1
-                     [EfocalEst, IincoEst, data] = EKF3b(u, image, darkHole, model, estimator, controller, data);
+                        [EfocalEst, IincoEst, data] = EKF3b(u, image, darkHole, model, estimator, controller, data);
                     else
                         [EfocalEst, IincoEst, data] = EKF3b_OL(u, image, darkHole, model, estimator, controller, data);
                     end

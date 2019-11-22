@@ -1,4 +1,4 @@
-%% Visualizations used for running experiment
+%% Visualizations used when debugging and verifying E-Field goodness
 
 %% focal plane images given control commands in log scale
 if target.broadBandControl
@@ -87,35 +87,36 @@ else
     figure(7)
     subplot(1,2,1)
     plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
-        1:darkHole.pixelNum,real(data.EfocalPerfOpenLoop(:,itr)),'g');
+        1:darkHole.pixelNum,real(data.EfocalEstProbed(:,itr)),'b',...
+        1:darkHole.pixelNum,real(data.EfocalEstOpenLoop(:,itr)),'g');
     
     % plot(1:darkHole.pixelNum,real(data.EfocalEst(:,itr)),'r',...
     %     1:darkHole.pixelNum,real(data.EfocalPerfect(:,itr)),'g');
     axis tight
-    legend('Dither','Perfect OL');
+    legend('Dither','Probed','Perfect OL');
     xlabel('iteration')
     ylabel('Estimated OL Electric Field')
     title({'Comparison bt probed E estimation and unprobed E estimation (unprobed used for control)',' '})
     %
-%     EfocalEst_err(itr,1) = mean(abs( (real(dataAlt.EfocalEst(:,itr)) - real(data.EfocalEst(:,itr)))))...
-%         ./ mean(abs(real(dataAlt.EfocalEst(:,itr)) ));
+    EfocalEst_err(itr,1) = mean(abs( (real(dataAlt.EfocalEst(:,itr)) - real(data.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(dataAlt.EfocalEst(:,itr)) ));
     
-    EfocalEstPerf_err_tot(:,itr) = (abs( (real(data.EfocalPerfOpenLoop(:,itr)) - real(data.EfocalEst(:,itr)))))...
-        ./ mean(abs(real(data.EfocalPerfOpenLoop(:,itr)) ));
+    EfocalEstPerf_err_tot(:,itr) = (abs( (real(data.EfocalEstOpenLoop(:,itr)) - real(data.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(data.EfocalEstOpenLoop(:,itr)) ));
     
     EfocalEstPerf_err(itr,1) = mean(EfocalEstPerf_err_tot(:,itr));
     
-%     EfocalEstProbed_err(itr,1) = mean(abs( (real(data.EfocalEstOpenLoop(:,itr)) - real(dataAlt.EfocalEst(:,itr)))))...
-%         ./ mean(abs(real(data.EfocalEstOpenLoop(:,itr)) ));
+    EfocalEstProbed_err(itr,1) = mean(abs( (real(data.EfocalEstOpenLoop(:,itr)) - real(dataAlt.EfocalEst(:,itr)))))...
+        ./ mean(abs(real(data.EfocalEstOpenLoop(:,itr)) ));
     
     subplot(1,2,2)
-    plot(1:itr,EfocalEstPerf_err(1:itr),'b+-');
+    plot(1:itr,EfocalEst_err(1:itr),'r+-',1:itr,EfocalEstPerf_err(1:itr),'b+-',1:itr,EfocalEstProbed_err(1:itr),'g+-');
     % plot(1:itr,EfocalEstPerf_err(1:itr),'b+-');
     axis tight
     xlabel('iteration')
     ylabel('Average |Relative Error|')
-    title({'Average Relative Error bt Perfect and Estimated OL E-Field',' '})
-    legend('Dither-Perfect')
+    title({'Average Relative Error bt Probed and Unprobed OL E-Field Estimation',' '})
+    legend('Dither-Probed','Dither-Perfect','Probed-Perfect')
     ylim([0,1])
     drawnow
     

@@ -4,7 +4,7 @@ clear;
 close all;
 
 %% Initialize the system and parameters
-Nitr = 15;%4000; % iterations of control loop
+Nitr = 10;%4000; % iterations of control loop
 cRange = [-8, -4]; %[-12, -3];% the range for display
 simOrLab = 'simulation';%'lab';%  'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
 runTrial = 1;
@@ -587,8 +587,8 @@ end
 eval([data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
 cd(folder.dataLibrary);
 eval(['save ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ';']);
+eval(['save model', num2str(runTrial), ' model;']);
 cd(folder.main);
-% eval(['save model', num2str(kCorrection), ' model;']);
 % cd(folder.main);
 
 %% correct model errors - monochromatic

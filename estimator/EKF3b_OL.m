@@ -157,6 +157,8 @@ end
 % temp = mean(mean(Iobserv))^2 * estimator.observationVarCoefficient3 * eye(estimator.NumImg);
 % R = estimator.observationVarCoefficient * eye(estimator.NumImg+1);
 R = estimator.observationVarCoefficient * eye(estimator.NumImg) + temp;
+
+% This should be the drift std dev
 Q = (sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2); % for simulation
 
 % figure
@@ -173,7 +175,7 @@ for q = 1 : darkHole.pixelNum
 %             disp(["xOld - Opt Model Output",num2str(xOld - xOld_perf)]);
         else
             xOld = [real(data.EfocalEst(q, data.itr-1)); imag(data.EfocalEst(q, data.itr-1))];
-            xOld_perf = [real(data.EfocalEstOpenLoop(q, data.itr-1)); imag(data.EfocalEstOpenLoop(q, data.itr-1))];
+            xOld_perf = [real(data.EfocalPerfOpenLoop(q, data.itr-1)); imag(data.EfocalPerfOpenLoop(q, data.itr-1))];
             xOld_track(q,data.itr) = sum(xOld - xOld_perf);
 %             disp(["xOld - Opt Model Output",num2str(xOld - xOld_perf)]);
         
@@ -231,7 +233,9 @@ for q = 1 : darkHole.pixelNum
 %     end
     % save the data
     EfocalEst(q) = xPosteriori(1) + 1i * xPosteriori(2);
-    IincoEst(q) = InoPoke(q) - sum(xPosteriori.^2);
+%     IincoEst(q) = InoPoke(q) - sum((xPosteriori).^2);
+    IincoEst(q) = InoPoke(q) - sum((xOld + update).^2);% Open loop version (check)
+
     if kWavelength == 0
         data.P(:, :, q, data.itr) = Pposteriori;
         data.y(:, :, data.itr) = Iobserv';
@@ -240,6 +244,9 @@ for q = 1 : darkHole.pixelNum
         data.yBroadband(:, :, kWavelength, data.itr) = Iobserv';
     end
 end
-figure;
-plot(xOld_track)
+% figure;
+% plot(xOld_track(:,data.itr))
+% title('Xold Tracking')
+% size(xOld_track)
+
 end
