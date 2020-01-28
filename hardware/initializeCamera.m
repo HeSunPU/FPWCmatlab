@@ -13,10 +13,12 @@ Camera_ctrl(camera.handle, 'exposureproperties', camera.startPosition, camera.im
             [camera.binXi, camera.binEta]); % set up camera properties
 disp('Camera connected.')
 if(camera.newDarkFrame) % take new dark frame if needed
+    mean_std_old=[600,600];
     mean_std=[500,500];
-    while mean_std(1,2)>6
+    while mean_std(1,2)>6.5 && floor(mean_std(1,2)*10)/10 ~= floor(mean_std_old(1,2)*10)/10
         numIm = 30;
         camera.darkFrame = takeDarkCam(camera.handle, camera.exposure, numIm, camera.binXi, camera.binEta);
+        mean_std_old = mean_std;
         mean_std = [mean2(camera.darkFrame), std2(camera.darkFrame)]
     end
 else

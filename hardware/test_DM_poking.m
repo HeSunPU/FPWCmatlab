@@ -260,8 +260,12 @@ sineWave = ones(34,34);
 %sineWave(:,1:2:end) = -1;
 %sineWave(1:2:end,:) = -1;
 
-sineWave(:,1:4:end) = -1;
-sineWave(:,2:4:end) = -1;
+%sine wave is 4 actuators per period
+% sineWave(:,1:4:end) = -1;
+% sineWave(:,2:4:end) = -1;
+
+% 
+sineWave(:,1:2:end) = -1;
 
 % sineWave(:,5:8:end) = -1;
 % sineWave(:,6:8:end) = -1;

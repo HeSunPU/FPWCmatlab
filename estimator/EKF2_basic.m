@@ -1,13 +1,14 @@
-function [EfocalEst, IincoEst, data] = EKF2(u, image, darkHole, model, estimator, controller, data, kWavelength)
+function [EfocalEst, IincoEst, data] = EKF2_basic(u, image, darkHole, model, estimator, controller, data, kWavelength)
 %% The pixel-wise extended Kalman filter estimator with no non-probe image
 % Developed by He Sun on Feb. 24, 2017
-% Revised by He Sun on Jan. 23, 2019
-% In this revised version, we do not use the image without DM probes
+% Revised by Susan Redmond Oct 9, 2019
+% No probing images taken or used in this revised version
 %
 % EfocalEst - the estimated coherent focal plane electric field
 % IincoEst - the estimated incoherent focal plane intensity
-% u - the DM probing commands
-% image - the images used for wavefront estimation
+% u - 0 since no probing happens here
+% image - the image used for wavefront estimation; taken with the dither
+% command
 % darkHole - defines the parameters of the dark holes
 % model - the control Jacobian and other model related variables
 % controller - the properties of the controller
@@ -23,17 +24,30 @@ end
 % assert(strcmpi(estimator.type, 'EKF'), 'Not using pixel-wise EKF estimator now!');
 % assert we give correct probimg command input
 assert(size(u, 2) == estimator.NumImg, 'Not giving correct DM probing commands!');
+
 % assert we give correct number of images
-assert(size(image, 3) == 1 + estimator.NumImg, 'Not giving correct number of images!');
+% sfr added case 
+switch lower(estimator.type)
+    case 'ekf_speckle'
+        assert(size(image, 3) == estimator.NumImg, 'Not giving correct number of images!');        
+    otherwise
+        assert(size(image, 3) == 1 + estimator.NumImg, 'Not giving correct number of images!');
+end
 %% redefine the observation noise coefficient according to exposure noise
 if estimator.adaptive_exposure
     estimator.observationVarCoefficient = estimator.observationVarCoefficient0 / data.probe_exposure(data.itr)^2;
 end
 %% Extract the images
-Iobserv = zeros(estimator.NumImg, darkHole.pixelNum);
-for k = 1 : estimator.NumImg
-    Iobserv2D = image(:, :, k+1);
-    Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
+switch lower(estimator.type) %added by sfr
+    case 'ekf_speckle'
+        Iobserv = zeros(estimator.NumImg, darkHole.pixelNum);
+        for k = 1 : estimator.NumImg
+            Iobserv2D = image(:, :, k);
+            Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
+%             Iobserv2D = zeros(size(image));%(:, :, k);
+%             Iobserv(k, :) = Iobserv2D(darkHole.pixelIndex);
+        end
+    otherwise
 end
 % Compuate the influence caused by probing
 switch estimator.whichDM
@@ -46,22 +60,22 @@ switch estimator.whichDM
         return;
 end
 probe = zeros(estimator.NumImg, darkHole.pixelNum);
-for k = 1 : estimator.NumImg
-    probe(k, :) = transpose(G * u(:, k));
-end
+% probe = transpose(G * u(:, k)); % u = 0 so this will be zero
+
 %% combine the phase information from model and amplitude information from
 % measurement
-if estimator.measuredAmp
-    phase = atan2(imag(probe), real(probe));
-    probe = amplitude .* (cos(phase) + 1i * sin(phase));
-end
+
 EfocalEst = zeros(darkHole.pixelNum, 1);
 IincoEst = zeros(darkHole.pixelNum, 1);
 
 % generate the control Jacobian and control command used according to
 % the DM we use for control
 if data.itr == 1
-    command = data.DMcommand(:, 1);
+    if strcmpi(estimator.type, 'ekf_speckle') == 0
+        command = data.DMcommand(:, 1);
+    else
+        command = data.DMcommand(:, 1) - data.DHcommand;
+    end
 else
     command = data.DMcommand(:, data.itr) - data.DMcommand(:, data.itr - 1);
 end
@@ -71,7 +85,7 @@ switch controller.whichDM
         command = command(1 : length(command)/2);
     case '2'
         G = model.G2;
-        command = command(length(command)/2 + 1: length(command));
+        command = command(length(command)/2 + 1: length(command)); % SUSAN CHANGED THIS command = command(length(command)/2 + 1, length(command));
     case 'both'
         G = [model.G1, model.G2];
     otherwise
@@ -79,16 +93,10 @@ switch controller.whichDM
         return;
 end
 % generate the covariance matrices
-%     R = 2 * data.backgroundStd(data.itr)^2 * eye(2);
+
 temp = zeros(estimator.NumImg);
-for k = 1 : estimator.NumImg
-%     temp(k, k) = sum(command.^2)* estimator.processVarCoefficient^2;
-%     temp(k, k) = 10 * sum(u(:, k).^2)* estimator.processVarCoefficient^2;
-%     temp(k, k) = sum(u(:, k).^2)* estimator.observationVarCoefficient2;
-    temp(k, k) = mean(abs(probe(k, :)).^2).^2 * estimator.observationVarCoefficient3;
-end
-% R = estimator.observationVarCoefficient * eye(estimator.NumImg+1);
 R = estimator.observationVarCoefficient * eye(estimator.NumImg) + temp;
+
 Q = zeros(3,3);
 Q(1:2, 1:2) = (sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2); % for simulation
 % Kalman filter for each pixel in the dark holes
@@ -114,11 +122,15 @@ for q = 1 : darkHole.pixelNum
             xOld = [real(data.EfocalEst(q, kWavelength, data.itr-1)); imag(data.EfocalEst(q, kWavelength, data.itr-1)); data.IincoEst(q, kWavelength, data.itr-1)];
         end
     end
+%     Q(3,3)
+%     Q(3,3) = 10^-18; %SUSAN ADDED ***************
     update = [[real(G(q, :)); imag(G(q, :))] * command; 0]; % the linear update of the state
     y = Iobserv(:, q);
     % Kalman filter estimation officially starts here
     xPriori = xOld + update; % predict a priori state estimate
-    H = [2 * (xPriori(1) + real(probe(:, q))), 2 * (xPriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the observation matrix is based on the priori state estimate
+    % Probe = 0 here!
+    H = [2 * (xPriori(1)), 2 * (xPriori(2)),...
+        ones(estimator.NumImg, 1)]; % the observation matrix is based on the priori state estimate
     if data.itr == 1
         temp = zeros(3, 3);
         temp(1, 1) = estimator.stateStd0;
@@ -134,7 +146,7 @@ for q = 1 : darkHole.pixelNum
     end
     hPriori = zeros(estimator.NumImg, 1); % the nonlinear predict observation of the field
     for k = 1 : estimator.NumImg
-        hPriori(k) = (xPriori(1) + real(probe(k, q)))^2 + (xPriori(2) + imag(probe(k, q)))^2 + xPriori(3);
+        hPriori(k) = (xPriori(1))^2 + (xPriori(2))^2 + xPriori(3); %probe is zero
     end
     residual = y - hPriori; % compute the measurement residual
     S = H * Ppriori * H' + R; % residual covariance
@@ -143,7 +155,7 @@ for q = 1 : darkHole.pixelNum
     Pposteriori = (eye(3) - K * H) * Ppriori; % update a posteriori estimate covariance
     % Iterate the EKF to make more accurate estimation
     for iEKF = 1 : estimator.itrEKF
-        H = [2 * (xPosteriori(1) + real(probe(:, q))), 2 * (xPosteriori(2) + imag(probe(:, q))), ones(estimator.NumImg, 1)]; % the new linear observation matrix
+        H = [2 * (xPosteriori(1)), 2 * (xPosteriori(2)), ones(estimator.NumImg, 1)]; % the new linear observation matrix
         hPosteriori = zeros(estimator.NumImg, 1); % the nonlinear predict observation of the field
         for k = 1 : estimator.NumImg
             hPosteriori(k) = (xPosteriori(1) + real(probe(k, q)))^2 + (xPosteriori(2) + imag(probe(k, q)))^2 + xPosteriori(3);
@@ -157,6 +169,7 @@ for q = 1 : darkHole.pixelNum
     % save the data
     EfocalEst(q) = xPosteriori(1) + 1i * xPosteriori(2);
     IincoEst(q) = xPosteriori(3);
+
     if kWavelength == 0
         data.P(:, :, q, data.itr) = Pposteriori;
         data.y(:, :, data.itr) = Iobserv';

@@ -1,18 +1,24 @@
-%% main function of broadband wavefront control
+%% Sec #0 - main function of broadband wavefront control
 % revised from runEFC.m by He Sun on Jul. 30, 2019
 
 clc;
 clear;
 close all;
 
-%% Initialize the system and parameters
-Nitr = 30;%4000; % iterations of control loop
+%% Sec #1 - Initialize the system and parameters
+Nitr = 10;%4000; % iterations of control loop
 cRange = [-7, -3]; %[-12, -3];% the range for display
 simOrLab = 'lab';%'simulation';%  'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
-runTrial = 2;
+runTrial = 1;
+systemID_flag = true;%false;%
+n_systemID = 3;%10;
+if ~systemID_flag
+    n_systemID = 1;
+end
+%clear folder
 Initialization_broadband;
 
-%% Initialize the hardware driver if we are running experiment
+%% Sec #2 - Initialize the hardware driver if we are running experiment
 % Laser_Enable('on');
 % Laser_Power(65, 1);
 if (strcmpi(simOrLab, 'lab')) % if conducting experiment in lab, initialize DM and camera drivers
@@ -53,15 +59,17 @@ if (strcmpi(simOrLab, 'lab')) % if conducting experiment in lab, initialize DM a
     end
 %     fopen(target.laser)
 end
-%% disconnect the camera at the end
-disconnecting = 0;
+%% Sec #3 - disconnect the camera at the end
+disconnecting =2;
 if disconnecting == 1
 	error = BurstHVA4096Frame1D(1, zeros(4096,1)); % finalize DMs
 	finalizeCamera(camera) % finalize the camera
     Laser_Power(0, 1)
-    Laser_Enable('off')    
+    Laser_Enable('off')
+elseif disconnecting == 2
+    error = BurstHVA4096Frame1D(1, zeros(4096,1)); % finalize DMs
 end
-%% Compute the state space model of the system
+%% Sec #4 - Compute the state space model of the system
 % parpool(16);
 G1Broadband = zeros(darkHole.pixelNum, DM.activeActNum, target.broadSampleNum);
 G2Broadband = zeros(darkHole.pixelNum, DM.activeActNum, target.broadSampleNum);
@@ -83,10 +91,14 @@ model.G2 = G2Broadband;
 % model.G1 = model.G1(:, :, indices);
 % model.G2 = model.G2(:, :, indices);
 % 
-
-%% take focal plane image with no DM poking
+%% Sec #5 - start the system ID loop
+for k_EM = 1 : n_systemID
+    
+%% Sec #5.1 - take focal plane image with no DM poking
 DM1command = zeros(DM.activeActNum, 1);
 DM2command = zeros(DM.activeActNum, 1);
+% DM1command = DM1command_final;
+% DM2command = DM2command_final;
 if strcmpi(camera.name, 'QSI')
     camera.exposure = 5;%0.01;
     camera.exposure0 = 5;%0.01;
@@ -128,12 +140,15 @@ elseif strcmpi(camera.name, 'Starlight')
         data.I0(:, :, kWavelength) = I0;
     end
 else
-    disp('Camera name is either QSI or Starlight!!')
+    disp('Camera name is neither QSI or Starlight!!')
 end
-% estimate the starting contrast using batch process estimation
+%% estimate the starting contrast using batch process estimation
 contrastEst = -1;
 data.itr = 0;
 [imageAll, u, data] = takeProbingImagesBroad(contrastEst, target, DM, coronagraph, camera, darkHole, estimatorBatch, DM1command, DM2command, simOrLab, data);
+data.Ip0 = imageAll;
+data.uProbe0 = u;
+
 for kWavelength = 1 : target.broadSampleNum
     model_help.G1 = squeeze(model.G1(:, :, kWavelength));
     model_help.G2 = squeeze(model.G2(:, :, kWavelength));
@@ -153,7 +168,6 @@ incoherentEst = mean(data.estimatedIncoherentAverage0);
 EfocalEstBroadband = data.EfocalEst0;
 IincoEstBroadband = data.IincoEst0;
 
-
 disp('***********************************************************************');
 disp('The initial condition');
 disp(['The starting measured average contrast in the dark holes is ', num2str(mean(data.contrast0))]);
@@ -163,7 +177,7 @@ figure(1), imagesc(log10(abs(I0))), colorbar;
 caxis(cRange);
 drawnow
 
-% Control loop start
+%% Sec #5.2 - Control loop start
 for itr = 1 : Nitr
     if itr <= 0
         camera.exposure = 1;%0.01;
@@ -305,6 +319,7 @@ for itr = 1 : Nitr
     data.estimatedIncoherentAverage(:, itr) = incoherentEst;
     data.estimatedContrastMax(:, itr) = max(IfocalEst);
     data.estimatedContrastStd(:, itr) = std(IfocalEst);
+    data.Ip(:, :, :, :, itr) = imageAll;
     disp(['The estimated average contrast in the dark holes is ', num2str(mean(contrastEst))]);
     
     %% check the contrast after giving new control commands
@@ -408,143 +423,53 @@ for itr = 1 : Nitr
     end
 end
 
-%% save data
-eval([data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
-cd(folder.dataLibrary);
-eval(['save ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ';']);
-cd(folder.main);
-% eval(['save model', num2str(kCorrection), ' model;']);
-% cd(folder.main);
-
-%% correct model errors - monochromatic
-% initialization of the model
-G1Learned = model.G1;
-G2Learned = model.G2;
-Qlearned = zeros(2, 2, size(model.G1, 1));
-Rlearned = zeros(2, 2, size(model.G1, 1));
-% clean the wavefront control data
-NitrEM = 3;
-uAll = data.DMcommand - [zeros(1904, 1), data.DMcommand(:, 1:end-1)];
-uProbeAll = cat(1, data.uProbe, zeros(size(data.uProbe)));
-
-%% start identifying the model of different pixels
-parfor index = 1: size(model.G1, 1)
-    %%
-    disp(['Now we are learning pixel ', num2str(index)]);
-    G = [G1Learned(index, :), G2Learned(index, :)];
-    G = [real(G); imag(G)];
-    % initialize the x0 and P0
-    x0 = [real(data.EfocalEst0(index)); imag(data.EfocalEst0(index))];
-%     P0 = 1e-5 * eye(2);
-%     Q = 3e-9 * eye(2);
-%     R = 3e-14 * eye(estimator.NumImgPair);
-    P0 = 1e-4 * eye(2);
-    Q = 3e-8 * eye(2);
-    R = 3e-13 * eye(estimator.NumImgPair);
-    yAll = squeeze(data.y(index, :, :));
-    % online learning
-    delta1 = 1e-1;
-    delta2 = 1e-1;
-    batchSize = 3; % how many observations for each updates
-    %%
-    for learningItr = 1 : batchSize : 9
-        u = uAll(:, learningItr : learningItr+batchSize-1);
-        uProbe = uProbeAll(:, :, learningItr : learningItr+batchSize-1);
-        y = yAll(:, learningItr : learningItr+batchSize-1);
-        [system, stateEst]= onlineLearning(u, y, G, Q, R, x0, P0, uProbe, NitrEM, delta1, delta2);
-        %%
-        G1Learned(index, :) = system.G(1, 1:size(model.G1, 2)) + 1i * system.G(2, 1:size(model.G1, 2));
-        G2Learned(index, :) = system.G(1, size(model.G1, 2)+1:end) + 1i * system.G(2, size(model.G1, 2)+1:end);
-        Qlearned(:, :, index) = system.Q;
-        Rlearned(:, :, index) = system.R;
-        G = system.G;
-        x0 = stateEst.x(:, end);
-        P0 = stateEst.P(:, :, end);
-    end
-end
-model.G1 = G1Learned;
-model.G2 = G2Learned;
-% save model model
-% %% correct model errors  - broadband
-% modelBroadband = model;
-% % initialization of the model
-% G1Learned = modelBroadband.G1;
-% G2Learned = modelBroadband.G2;
-% Qlearned = zeros(2, 2, size(model.G1, 1), target.broadSampleNum);
-% Rlearned = zeros(2, 2, size(model.G1, 1), target.broadSampleNum);
-% % clean the wavefront control data
-% NitrEM = 3;
-% uAll = data.DMcommand - [zeros(1904, 1), data.DMcommand(:, 1:end-1)];
-% uProbeAll = cat(1, data.uProbe, zeros(size(data.uProbe)));
-% 
-% %% start identifying the model of different pixels
-% parfor index = 1: size(model.G1, 1)
-%     
-%     %% prepare the data
-%     for kWavelength = 1 : 7
-%         %%
-%         disp(['Now we are learning pixel ', num2str(index), ' at wavelength ', num2str(target.starWavelengthBroad(kWavelength)), 'nm']);
-% 
-%         G1 = [real(modelBroadband.G1(index, :, kWavelength)); imag(modelBroadband.G1(index, :, kWavelength))];
-%         G2 = [real(modelBroadband.G2(index, :, kWavelength)); imag(modelBroadband.G2(index, :, kWavelength))];
-%         G = [G1, G2];
-%         % initialize the x0 and P0
-%         x0 = [real(data.EfocalEst0(index, kWavelength)); imag(data.EfocalEst0(index, kWavelength))];
-%         P0 = 1e-5 * eye(2);
-%         Q = 3e-9 * eye(2);
-%         R = 3e-14 * eye(estimator.NumImgPair);
-%         yAll = squeeze(data.yBroadband(index, :, kWavelength, :));
-%         % online learning
-%         delta1 = 1e-1;
-%         delta2 = 1e-1;
-%         batchSize = 3; % how many observations for each updates
-%     %%
-%         for learningItr = 1 : batchSize : 18
-%             u = uAll(:, learningItr : learningItr+batchSize-1);
-% %             uProbe = uProbeAll(:, :, learningItr+1 : learningItr+1+batchSize-1);
-% %             y = yAll(:, learningItr+1 : learningItr+1+batchSize-1);
-%             uProbe = uProbeAll(:, :, learningItr : learningItr+batchSize-1);
-%             y = yAll(:, learningItr : learningItr+batchSize-1);
-%             [system, stateEst]= onlineLearning(u, y, G, Q, R, x0, P0, uProbe, NitrEM, delta1, delta2);
-%             %%
-%             G1Learned(index, :, kWavelength) = system.G(1, 1:size(model.G1, 2)) + 1i * system.G(2, 1:size(model.G1, 2));
-%             G2Learned(index, :, kWavelength) = system.G(1, size(model.G1, 2)+1:end) + 1i * system.G(2, size(model.G1, 2)+1:end);
-%             Qlearned(:, :, index, kWavelength) = system.Q;
-%             Rlearned(:, :, index, kWavelength) = system.R;
-%             G = system.G;
-%             x0 = stateEst.x(:, end);
-%             P0 = stateEst.P(:, :, end);
-%         end
-% 
-%     end
-% end
-% modelBroadband.G1 = G1Learned;
-% modelBroadband.G2 = G2Learned;
-% model = modelBroadband;
-% end
-
-%% introducing drift after reaching high contrast
-target.drift = 1;
-target.broadBandControl = 1;
-cameraPerfect = camera;
-cameraPerfect.noise = 0;
-for kDrift = 1 : 100
-    if target.broadBandControl
-        target_help = target;
-        Ibroadband = zeros(camera.Neta, camera.Nxi, target.broadSampleNum);
-        for kWavelength = 1 : target.broadSampleNum
-            target_help.starWavelength = target.starWavelengthBroad(kWavelength);
-            I = getImg(target_help, DM, coronagraph, cameraPerfect, DM1command, DM2command, simOrLab);
-            Ibroadband(:, :, kWavelength) = I;
+%% Sec #5.3 - save data and update the model
+if systemID_flag
+    eval([data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), 'EM', num2str(k_EM), '=data;']);
+    cd(folder.dataLibrary);
+    eval(['save ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), 'EM', num2str(k_EM), ' ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), 'EM', num2str(k_EM), ';']);
+    cd(folder.main);
+    figure(1001), semilogy(0:Nitr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1));
+    hold on
+    legend
+    %% correct model errors using FPWCpy:HCIL_broadband_EM.py
+    dataIFS.I = zeros(darkHole.pixelNum, target.broadSampleNum, 2*estimator.NumImgPair+1, Nitr+1);
+    for j = 1 : 2*estimator.NumImgPair+1
+        for n = 1 : target.broadSampleNum
+            temp = data.Ip0(:, :, n, j);
+            dataIFS.I(:, n, j, 1) = temp(darkHole.pixelIndex);
         end
-        figure(101), imagesc(log10(abs(mean(Ibroadband, 3)))), colorbar;
-        caxis([-10, -8]);
-        drawnow
-    else
-        I = getImg(target, DM, coronagraph, cameraPerfect, DM1command, DM2command, simOrLab);
-        figure(101), imagesc(log10(abs(I))), colorbar;
-        caxis([-10, -8]);
-        drawnow
     end
-    target = targetDrift(target);
+    for k = 1 : Nitr
+        for j = 1 : 2*estimator.NumImgPair+1
+            for n = 1 : target.broadSampleNum
+                temp = data.Ip(:, :, n, j, k);
+                dataIFS.I(:, n, j, k+1) = temp(darkHole.pixelIndex);
+            end
+        end
+    end
+    dataIFS.DMcommand = data.DMcommand;
+    dataIFS.uProbe = zeros(DM.activeActNum, estimator.NumImgPair, Nitr+1);
+    dataIFS.uProbe(:, :, 1) = data.uProbe0;
+    dataIFS.uProbe(:, :, 2:Nitr+1) = data.uProbe;
+    eval(['dataIFS', num2str(k_EM), '=dataIFS']);
+    cd(folder.dataLibrary);
+    eval(['save ', 'dataIFS', num2str(k_EM), ' ', 'dataIFS', num2str(k_EM)]);
+    cd(folder.main);
+    %% load the newly identified Jacobian model
+    while ~exist([folder.dataLibrary, '/G_broadband', num2str(k_EM), '.mat'])
+        pause(1);
+    end
+    pause(2);
+    eval(['load ', '''', folder.dataLibrary, '/G_broadband', num2str(k_EM), '.mat', '''']);
+    model.G1 = G_broadband(:, 1:DM.activeActNum, :);
+    model.G2 = G_broadband(:, DM.activeActNum+1:end, :);
+    
+else
+    eval([data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
+    cd(folder.dataLibrary);
+    eval(['save ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ';']);
+    cd(folder.main);
+end
+
 end

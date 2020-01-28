@@ -10,7 +10,7 @@ NpxY = 1040;
 Xc = NpxX/2;Yc = NpxY/2; 
 %RX = NpxX/2;RY = NpxY/2; 
 %RX = NpxX/4;RY = NpxY/4; 
-RX = 512;RY = 512; 
+RX = 568;RY = 512; 
 spaxelX = 38;%29.7;% % TBC
 spaxelY = 5.95;%
 camPitch = 6.45;
@@ -27,8 +27,10 @@ dark = SXcam_Nimg(hCam, 0, exp, Xc, Yc, RX, RY, 0, 0, Nimg);
 save([folder, 'dark.mat'], 'dark')
 fitswrite(dark, [folder, 'dark.fits'])
 %%
+exp = 1000;%20000;%
+Nimg = 1;%
 dark = 1267;
-figure(1);
+% figure(1);
 while true
     [A,x,y,SAT]=SXcam_Nimg(hCam, 0, exp, Xc, Yc, RX, RY, 0, 0, Nimg);
     img = A - dark;
@@ -37,8 +39,12 @@ while true
 %    img = A;
 %     imagesc(log10(abs(img)/max(max(abs(img))))),colorbar; colormap(CMRmap(100));
 %     imagesc(log10(abs(img))),colorbar; colormap(CMRmap(100));
-%     figure(102), imagesc(log10(abs(img_crop))),colorbar; colormap(CMRmap(100));
-    figure, imagesc(log10(abs(img_crop))),colorbar; colormap(CMRmap(100));
+    figure(102), imagesc(log10(abs(img))),colorbar; colormap(CMRmap(100));
+    hold on
+    plot(568,512,'k*')
+    hold off
+    drawnow
+%     figure, imagesc(log10(abs(img_crop))),colorbar; colormap(CMRmap(100));
 %     imagesc(log10(abs(img_crop))),colorbar; colormap(CMRmap(100));
 %     caxis([1, 5])
 %     imagesc(abs(img_crop)),colorbar; colormap(CMRmap(100));

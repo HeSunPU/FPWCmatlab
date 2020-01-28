@@ -27,7 +27,7 @@ switch lower(computerID)
         folder.controller = 'C:\Lab\FPWCmatlab\controller';
         folder.estimator = 'C:\Lab\FPWCmatlab\estimator';
         folder.hardware = 'C:\Lab\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20191125';
+        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20190621';
         folder.LOWFS = 'C:\Lab\FPWCmatlab\LOWFS';
         folder.python = 'C:\Lab\FPWCpy\active_estimation';
     case 'hesunlaptop'
@@ -40,6 +40,16 @@ switch lower(computerID)
         folder.hardware = [pwd, '\hardware'];
         folder.dataLibrary = [pwd, '\dataLibrary\09122018'];
         folder.LOWFS = [pwd, '\LOWFS'];
+    case 'sfrlaptop'
+        folder.main = pwd;
+        folder.optics = [pwd, '/opticalModel'];
+        folder.DM = [pwd, '/DMmodel'];
+        folder.SSM = [pwd, '/stateSpaceModel'];
+        folder.controller = [pwd, '/controller'];
+        folder.estimator = [pwd, '/estimator'];
+        folder.hardware = [pwd, '/hardware'];
+        folder.dataLibrary = [pwd, '/dataLibrary/09122018'];
+        folder.LOWFS = [pwd, '/LOWFS'];
     otherwise
         disp('The computer ID you give is not correct!!');
         return;
@@ -60,7 +70,7 @@ addpath(folder.hardware);
 DM.model = 'influencingFunction'; % 'influencingFuntion' (or 'FEM', 'neuralNet')
 DM.DMmesh = [442, 442]; % The pixel number in each direction should better be even, [442, 442] is a good choice to recover surface shape using linear superposition
 DM.Nact = 34; % number of actuators in one direction
-DM.pitch = 2.7859e-04;% <-Seems small 2.8347e-04;%284.18e-06;%280.05e-6;%284.28e-6;%282.85e-06;%280.15e-06;%280.64e-6;%286.17e-6;%282.64e-6;% pitch size of DM actuator in meters, 301e-6 for SPLC, 282.7e-6 for SPC
+DM.pitch = 282.85e-06;%280.15e-06;%280.64e-6;%286.17e-6;%282.64e-6;% pitch size of DM actuator in meters, 301e-6 for SPLC, 282.7e-6 for SPC
 DM.widthDM = DM.pitch * DM.Nact; % DM width in meters, usually the DM is square
 DM.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact); %6.27e-9 * ones(DM.Nact, DM.Nact);
 DM.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
@@ -90,13 +100,13 @@ DM.DMperfect.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact);%5.06e-9 * ones(DM.Nact,
 DM.DMperfect.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact);%6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
 
 %% Initialize the coronagraph instrument layout
-coronagraph.type = 'SPC';%'VORTEX';%'SPLC';%
+coronagraph.type = 'SPC';%'VORTEX';%'SPC';%'SPLC';%
 
 if strcmpi(coronagraph.type, 'SPC') % 'Shaped pupil coroangraph'
     coronagraph.SPwidth = 0.01; % width of shaped pupil mask in meters
     coronagraph.Nsp = round(coronagraph.SPwidth / DM.widthDM * DM.DMmesh(1)); % number of pixels in one direction of shaped pupil mask matrix
     coronagraph.zDM2toSP = 0.5334;%0.51308;%0.581; % distance from DM2 to shaped pupil mask in meters
-    coronagraph.focalLength = 1.1632;%1.1683;%1.1703;%1.1165;%<- SEEMS WRONG 1.1693;%1.1707;%1.16;%1.35;%1.1727;%0.8034;%1.1727;%1.1729;%1.1704;%1.1697;%1.1638;%1.1786;%1.1630;%1.1676;%1.1642;%1.13;%1.1528;%1.141;%1.1379; %1.1652;%1.85; % focal length in meters
+    coronagraph.focalLength = 1.1727;%1.1697;%1.1638;%1.1786;%1.1630;%1.1676;%1.1642;%1.13;%1.1528;%1.141;%1.1379; %1.1652;%1.85; % focal length in meters
     coronagraph.SPshape = load([folder.optics '/SPs/ripple3_256x256_ideal_undersized.txt']);
     % coronagraph.SPshape = MakeMaskEllipse12b(coronagraph.Nsp/2, folder);
     % coronagraph.FPM = ones(camera.Nxi, camera.Neta);
@@ -177,11 +187,11 @@ camera.visionEta = [-10, 10]; % field of vision in vertical direction, defined b
 camera.Nxi = 99;%81;%%99 for HCIL experiment;
 camera.Neta = 83;%31;%%83 for HCIL experiment;
 camera.stacking = 1; % number of image for stacking
-camera.exposure = 0.1; % exposure time in seconds for one image
-camera.exposure0 = 0.1; % the exposure time used for non-probe image
+camera.exposure = 1; % exposure time in seconds for one image
+camera.exposure0 = 1; % the exposure time used for non-probe image
 camera.newDarkFrame = 1; % 1 for taking new dark frame, 0 for using existed dark frame
 camera.centerLabView = [273, 293]; % only works for same binning, [500-x, y]
-camera.center = [153,314];%[154,317];%[152   313];%[153,319];%[97,316];%[97,314];%[89 313];%[91   314];%[131,312];%[127,296];%[128,301];%[126,301];%[125,296];%[144 ,  301];%[126 ,  293];%[129 ,  296];%[165, 299];%[186, 294];%[193, 295];%[196, 320];%[199,321];% [210, 290];%[214, 288];%[206, 253];%[196, 262];%[196, 263];%[198, 263];%[205, 266];%[209, 286];%[217, 295];%[163, 234];%[167, 278];%[171, 300];%[140, 282];%[138, 287];%[140, 286];%[130,296];%[135, 302];%[112, 308];%[113, 310];%[113, 304];%[114, 303];%[112, 302];%[113, 302];%[113, 304];%[117, 302];%[118, 301];%[140, 264];%[142, 264];%[279, 243];%[280, 243];%[277, 248];%[250, 264];%[249, 285];%[250, 284];%[245, 281];%[245, 280];%[227,295];%[227,293];%[176, 314];%[254, 303];%[253, 303];%[252, 302];%[253, 303];%[252, 302];%[253, 303];%[253, 304];%[255, 305];%[254, 304];%[256, 307];%[255, 309];%[255, 310];%[256,310];%[256,311];%[257,311];%[257, 312];%[175,314];%[176, 334];%[176,334];%[178, 337];%[217, 257];%[219, 261];%[267, 275];%[266, 276];%[267, 274];%[269, 274];%[268, 277];%[194, 239];%[195, 238];%[255, 230];%[255, 231];%[232, 216];%[231, 220];%[232, 221];%[231, 224];%[232, 221]; % the center position of PSF on camera
+camera.center = [129 ,  296];%[193, 295];%[196, 320];%[199,321];% [210, 290];%[214, 288];%[206, 253];%[196, 262];%[196, 263];%[198, 263];%[205, 266];%[209, 286];%[217, 295];%[163, 234];%[167, 278];%[171, 300];%[140, 282];%[138, 287];%[140, 286];%[130,296];%[135, 302];%[112, 308];%[113, 310];%[113, 304];%[114, 303];%[112, 302];%[113, 302];%[113, 304];%[117, 302];%[118, 301];%[140, 264];%[142, 264];%[279, 243];%[280, 243];%[277, 248];%[250, 264];%[249, 285];%[250, 284];%[245, 281];%[245, 280];%[227,295];%[227,293];%[176, 314];%[254, 303];%[253, 303];%[252, 302];%[253, 303];%[252, 302];%[253, 303];%[253, 304];%[255, 305];%[254, 304];%[256, 307];%[255, 309];%[255, 310];%[256,310];%[256,311];%[257,311];%[257, 312];%[175,314];%[176, 334];%[176,334];%[178, 337];%[217, 257];%[219, 261];%[267, 275];%[266, 276];%[267, 274];%[269, 274];%[268, 277];%[194, 239];%[195, 238];%[255, 230];%[255, 231];%[232, 216];%[231, 220];%[232, 221];%[231, 224];%[232, 221]; % the center position of PSF on camera
 camera.blockedXi = [-3, 3]; 
 camera.blockedEta = [-3, 3]; % the blocked region by FPM, used for evaluating the background light and noise
 camera.blockedCoordXi = floor((camera.blockedXi(1)-camera.visionXi(1))/(camera.visionXi(2)-camera.visionXi(1))*camera.Nxi): ...
@@ -197,14 +207,19 @@ target.star = 1; % 1 for 'on', 0 for 'off'
 target.planet = 0; % 1 for 'on', 0 for 'off'
 target.broadBandControl = 0;%1; % broadband control or monochromatic control
 target.planetContrast = 1e-8; % the contrast of planet compared with star
-target.starWavelength = 635e-9; %705e-9;%658e-9;% Unit: meters
-target.starChannel = 1;%4; % channel on laser corresponding to star wavelength
+target.starWavelength = 635e-9; %658e-9;% Unit: meters
 target.starWavelengthBroad = 605e-9:10e-9:665e-9; % The broadband wavelengths
 target.broadSampleNum = length(target.starWavelengthBroad); % The length of broadband wavelengths
 target.planetWavelength = 648e-9; % Unit: meters
 target.separation = 8; % Unit: Wavelength / Diameter (lambda / D)
 target.normalization = 220.6292;%147.1332 for lab simulation; %1; % normalization factor for simulated images
-target.flux =  2.7516e+09;%1.9383e+09;%1.1775e+09;%2.0381e+09;%1.9475e+09;%2.0196e+09;%4.5057e+09;%<- uses laser power 55 1.9401e+09;%2.0068e+09;%1.9611e+09;%1.9576e+09;%1.9475e+09;%1.9384e+09;%2.0293e+09;%2.0251e+09;%2.1475e+09;% 3.188e+8;%1.878e+09;%1.576e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
+target.flux = 1.878e+09;%1.5474e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
+
+% sfr added
+target.driftDM = '1';%'1'; %which DM is used to introduce the speckle drift
+% target.driftcmd = zeros(DM.activeActNum,Nitr);
+% target.driftDisp = 1.2e-9; % max drift disp on mirror face in m
+target.driftDisp = 1.2e-8; % max drift disp on mirror face in m
 
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
 target.NdriftMode = 18;
@@ -337,12 +352,12 @@ if strcmpi(coronagraph.type, 'SPC')
 end
 %% Initialize the dark hole region
 darkHole.type = 'wedge';%'box';%'circ';% % the type(shape) of the dark hole regions - 'wedge' or 'box' or 'circ'
-darkHole.side = 'LR';%'R';% % the side where dark holes located - 'L', 'R' or 'LR'
+darkHole.side = 'L';%'R';% % the side where dark holes located - 'L', 'R' or 'LR'
 darkHole.rangeX = [7, 10]; % used for 'box' dark hole only, unit - f * lambda / D
 darkHole.rangeY = [-3, 3]; % used for 'box' dark hole only, unit - f * lambda / D
 if strcmpi(coronagraph.type, 'SPC')
-    darkHole.rangeR = [6,10];%<-SFR [5, 11];%[2.5, 9] for SPLC;%[6, 10]; %[5.5, 10.5]; % used for 'wedge' dark hole only, unit - f * lambda / D
-    darkHole.rangeAngle = 30;%<-SFR 42.5;% 30 for SPLC; % used for 'wedge' dark hole only, ranged from 0 to 45, unit - degree
+    darkHole.rangeR = [6, 11];%[2.5, 9] for SPLC;%[6, 10]; %[5.5, 10.5]; % used for 'wedge' dark hole only, unit - f * lambda / D
+    darkHole.rangeAngle = 42.5;% 30 for SPLC; % used for 'wedge' dark hole only, ranged from 0 to 45, unit - degree
 elseif strcmpi(coronagraph.type, 'SPLC')
     darkHole.rangeR = [2.5, 9];
     darkHole.rangeAngle = 30;
@@ -356,10 +371,10 @@ darkHole.pixelIndex = find(darkHole.mask(:) == 1); % the pixel indices in the da
 darkHole.pixelNum = length(darkHole.pixelIndex); % the number of pixels in the dark holes
 
 %% Initialize the controllers
-controller.type = 'EFC';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
-controller.whichDM = 'both';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
+controller.type = 'efc';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
+controller.whichDM = '2';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
 if strcmpi(controller.type, 'EFC')
-    controller.alpha =  3e-6;%3e-6;%<- He's good number 9e-5;%1e-4;%<-SFR3e-8;%3e-5;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
+    controller.alpha = 1e-4;%3e-6;%1e-4;%3e-4;%5e-7;%sfr 3e-4;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
     controller.lineSearch = 0; % 1 stands for add constraint that enforces the target contrast larger than estimation covariance
     if controller.lineSearch
         data.control_regularization = zeros(Nitr, 1);
@@ -419,13 +434,13 @@ end
 % controller.linearControllerType = 'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin'; %'energyMin';
 
 %% Initialize the estimators
-estimator.type = 'batch';%'EKF';%'EKF';%'Kalman';%%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
-estimator.whichDM = '1';%'both';% % which DM we use for probing, '1', '2' or 'both'
-estimator.NumImgPair =2; % Used when EKFpairProbing is 1
-estimator.NumImg = 2; % Used when EKFpairProbing is 0
+estimator.type = 'ekf_speckle';%'batch';%'ekf_speckle';%'EKF';%'EKF';%'EKF';%'EKF';%'batch';%'EKF';%'EKF';%'batch';%'batch';%'Kalman';%%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
+estimator.whichDM = '2';%'both';% % which DM we use for probing, '1', '2' or 'both'
+estimator.NumImgPair = 2; % Used when EKFpairProbing is 1
+estimator.NumImg = 1; %CHANGE BACK TO 1 % Used when EKFpairProbing is 0
 estimator.linearProbe = 1;%1; % 1 stands for only considering the linear part of DM probing, 0 stands for simulating the probing which include all the terms
 estimator.nonProbeImage = 0;
-estimator.EKFpairProbing = 1; % 1 stands for still using pair-wise probing, 0 stands for not
+estimator.EKFpairProbing = 0; % 1 stands for still using pair-wise probing, 0 stands for not
 estimator.EKFincoherent = 1; % 1 stands for estimating incoherent in EKF, 0 stands for assuming no incoherent light
 estimator.optimized_probe = 0;
 estimator.itrEKF = 10;%10;%10;%3; % Used for 'EKF' only, IEKF iterations to make more accurate estimation
@@ -434,10 +449,10 @@ estimator.probeArea = [1, 17, -17, 17]; %[0, 17, -17, 17]; % Define the region i
 estimator.probeMethod = 'Empirical'; %'OptimalOffsets';% 'Empirical' or 'OptimalOffsets', choose the best probing offset to reduce state covariance
 estimator.measuredAmp = 0; % 1 or 0, 1 stands for that we adjust the probing amplitude using measured images
 estimator.saveData = 0; % 1 or 0, 1 stands for that we want to save the probing command and images for future run
-estimator.stateStd0 = 1e-5;%7e-6;%1e-6 % the coefficient used to initialize the state covariance, used for Kalman filter and extended Kalman filter
-estimator.processVarCoefficient = 5e-9;%6e-9;%3e-8;% 3e-9 for physics model;%3e-8;%0.05 * 1e-7;%0.05 * 1e-7;%0.01 * 1e-7 for EKF 2 pair and UKF 2 images%0.01 * 1e-8; for EKF 1 pair and 1 image%0.3 * 1e-7 for lab% the coefficient used for compute the process covariance noise, used for Kalman filter and extended Kalman filter
-estimator.processVarCoefficient2 = 2e-10;% 1e-9;%
-estimator.observationVarCoefficient = 5e-17;% 1e-14;%3e-14;%1e-16;%3e-14;%3e-15;%1e-14;%6e-18;%6e-18; % the coefficient used for compute the observation covariance noise matrix
+estimator.stateStd0 = 2e-7;%7e-6;%1e-6 % the coefficient used to initialize the state covariance, used for Kalman filter and extended Kalman filter
+estimator.processVarCoefficient = 5e-9;%SFR%5e-9;%sfr %5e-9;%6e-9;%3e-8;% 3e-9 for physics model;%3e-8;%0.05 * 1e-7;%0.05 * 1e-7;%0.01 * 1e-7 for EKF 2 pair and UKF 2 images%0.01 * 1e-8; for EKF 1 pair and 1 image%0.3 * 1e-7 for lab% the coefficient used for compute the process covariance noise, used for Kalman filter and extended Kalman filter
+estimator.processVarCoefficient2 = 1e-9;%2e-10;%1e-9;%sfr 1e-7;%1e-9;%sfr %1e-7;% 1e-9;%
+estimator.observationVarCoefficient = 1e-15;%5e-17;%1e-15;%1e-14;%SFR %1e-15;%5e-17;% 1e-14;%3e-14;%1e-16;%3e-14;%3e-15;%1e-14;%6e-18;%6e-18; % the coefficient used for compute the observation covariance noise matrix
 estimator.observationVarCoefficient1 = 1.0 / (target.flux * camera.exposure); % scaling coefficient for camera possion noises
 estimator.observationVarCoefficient2 = 0.8e-14;% 2e-14 for physcis model;%3.68e-13;%5e-14;%7e-13;
 estimator.observationVarCoefficient3 = 0.0015;%0.022;%0.009;%0.022;% for SPC, 0.009;% for SPLC 0.008;% for SPC aberrated
@@ -477,6 +492,10 @@ if estimator.activeSensing
     estimator.rate = 1e-3;%1e-3;%5e-2;%5e-2; %5e-2 for probe scale optimization, 1e1 for probe command optimization
     estimator.sgd_itr = 200;
 end
+%sfr added
+estimator.ditherStd = 2e-4 ; %this should change with contrast?
+
+
 %% Initialize the linear system identification algorithm
 train.switch = 0; % 1 stands for online EM-algorithm is on, otherwise it is 'off'
 if train.switch == 1
@@ -564,6 +583,8 @@ elseif strcmpi(controller.type, 'EFC')
         if strcmpi(simOrLab, 'simulation')
             data.coherentErr = zeros(target.broadSampleNum, Nitr);
             data.incoherentErr = zeros(target.broadSampleNum, Nitr);
+            data.Efocaltrue = zeros(darkHole.pixelNum,Nitr);
+            data.Iincotrue = zeros(darkHole.pixelNum,Nitr);
         end
         data.contrast0 = zeros(target.broadSampleNum, 1);
         data.contrast0Max = zeros(target.broadSampleNum, 1);
@@ -579,6 +600,7 @@ elseif strcmpi(controller.type, 'EFC')
         data.P0 = zeros(2, 2, darkHole.pixelNum);
         data.I = zeros(camera.Neta, camera.Nxi, Nitr); % used to save the focal images after each control iteration
         data.EfocalEst = zeros(darkHole.pixelNum, Nitr); % the estimated coherent electric field at each iteration
+        data.EfocalEstProbed = zeros(darkHole.pixelNum, Nitr); % the estimated coherent electric field for probed version to compare with dither method at each iteration
         data.IincoEst = zeros(darkHole.pixelNum, Nitr); % the estimated incoherent light itensity
         data.measuredContrastAverage = zeros(Nitr, 1); % the measured average contrast in the dark holes (after wavefront correction)
         data.estimatedContrastAverage = zeros(Nitr, 1); % the estimated average contrast in the dark holes (before wavefront correction)
@@ -592,7 +614,7 @@ elseif strcmpi(controller.type, 'EFC')
         data.backgroundAverage = zeros(Nitr, 1); % the average contrast of background
         data.backgroundStd = zeros(Nitr, 1); % the std deviation of the backgroud
         data.probeContrast = zeros(Nitr, 1); % the probe contrast
-        if strcmpi(estimator.type, 'ekf')% && ~estimator.EKFpairProbing
+        if strcmpi(estimator.type, 'ekf') || strcmpi(estimator.type, 'ekf_speckle')% && ~estimator.EKFpairProbing  SUSAN CHANGED THIS ****************************
             if estimator.nonProbeImage
                 data.y = zeros(darkHole.pixelNum, estimator.NumImg+1, Nitr);
             else
@@ -623,7 +645,7 @@ elseif strcmpi(controller.type, 'EFC')
                         data.uProbe = zeros(DM.activeActNum, estimator.NumImg, Nitr); % the probe shapes
                     end
                 end
-            case {'ekf', 'ukf'}
+            case {'ekf', 'ukf', 'ekf_speckle'} %SUSAN ADDED THIS*******************************************
                 if estimator.EKFincoherent
                     data.P = zeros(3, 3, darkHole.pixelNum, Nitr);
                 else
@@ -648,11 +670,12 @@ elseif strcmpi(controller.type, 'EFC')
         end
     end
 end
-data.targetFlux = target.flux; %*
-data.camExp = camera.exposure; %*
-
 data.estimator = estimator;
 data.probe_exposure = zeros(Nitr, 1);
 if strcmpi(simOrLab, 'simulation')
     data.EfocalPerfect = zeros(darkHole.pixelNum, Nitr);
 end
+
+data.Driftcommand = zeros(2*DM.activeActNum,Nitr);
+data.Dithercommand = zeros(2*DM.activeActNum,Nitr);
+data.estOpenLoopContrast = zeros(Nitr, 1);

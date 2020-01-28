@@ -4,16 +4,19 @@ clear;
 close all;
 
 %% Initialize the system and parameters
-Nitr = 20;%4000; % iterations of control loop
-cRange = [-8, -4]; %[-12, -3];% the range for display
-simOrLab = 'lab';%'simulation';%  'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
+Nitr =15;%4000; % iterations of control loop
+cRange = [-8, -3]; %[-12, -3];% the range for display
+simOrLab ='lab';%   'lab';%'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
 runTrial = 1;
-Initialization;
+Initialization_Maint;
 
 %% Initialize the hardware driver if we are running experiment
 % Laser_Enable('on');
 % Laser_Power(65, 1);
+%% 
 if (strcmpi(simOrLab, 'lab')) % if conducting experiment in lab, initialize DM and camera drivers
+    camera = initializeCamera(camera);
+    
 %     DM.DM1bias = load('C:\BostonMicromachines v5.2\Flatmap Data for Princeton\C25CW003#010_CLOSED_LOOP_200nm_VOLTAGES.txt','-ascii');
     DM.DM1bias = load('C:\BostonMicromachines v5.2\Flatmap Data for Princeton\Engineering DMs\C25CW004#14_CLOSED_LOOP_200nm_Voltages_DM#1.txt','-ascii');
     DM.DM1bias = DM.DM1bias(1 : DM.activeActNum); % flatten map voltages in volts on DM1
@@ -21,14 +24,14 @@ if (strcmpi(simOrLab, 'lab')) % if conducting experiment in lab, initialize DM a
     DM.DM2bias = load('C:\BostonMicromachines v5.2\Flatmap Data for Princeton\Engineering DMs\C25CW018#40_CLOSED_LOOP_200nm_Voltages_DM#2.txt','-ascii');
     DM.DM2bias = DM.DM2bias(1 : DM.activeActNum); % flatten map voltages in volts on DM2
     initializeDM(DM);
-    camera = initializeCamera(camera);
+%     camera = initializeCamera(camera);
 end
 %% disconnect the camera at the end
 disconnecting = 0;
 if disconnecting == 1
 	error = BurstHVA4096Frame1D(1, zeros(4096,1)); % finalize DMs
 	finalizeCamera(camera) % finalize the camera
-    Laser_Power(0, 1)
+    Laser_Power(0, target.starChannel)
     Laser_Enable('off')    
 end
 %% Compute the state space model of the system
@@ -108,8 +111,13 @@ end
 % for kCorrection = 1 : 10
 %     runTrial = kCorrection;
 %% take focal plane image with no DM poking
+% For  thorlabs laser:
 camera.exposure = 0.01;
 camera.exposure0 = 0.01;
+% For superK
+% camera.exposure = 0.1;
+% camera.exposure0 = 0.1;
+
 DM1command = zeros(DM.activeActNum, 1);
 DM2command = zeros(DM.activeActNum, 1);
 if target.broadBandControl
@@ -176,21 +184,21 @@ disp('The initial condition');
 disp(['The starting measured average contrast in the dark holes is ', num2str(mean(data.contrast0))]);
 disp(['The estimated average contrast in the dark holes is ', num2str(mean(data.estimatedContrastAverage0))]);
 disp('***********************************************************************');
-figure(1), imagesc(log10(abs(I0))), colorbar;
+figure(110), imagesc(log10(abs(I0))), colorbar;
 caxis(cRange);
 drawnow
 
 %% Control loop start
 for itr = 1 : Nitr
-    if itr <= 3
-        camera.exposure = 0.01;
-        camera.exposure0 = 0.01;
+    if itr <= 4
+        camera.exposure = 0.01;% 0.4; %0.01
+        camera.exposure0 = 0.01;%0.4;
     elseif itr <= 15
-        camera.exposure = 0.1;
-        camera.exposure0 = 0.1;
+        camera.exposure = 0.1;%0.5; %0.1
+        camera.exposure0 = 0.1;%0.5;
     else
-        camera.exposure = 0.3;
-        camera.exposure0 = 0.3;
+        camera.exposure = 0.3;%0.9; %0.3
+        camera.exposure0 =0.3;% 0.9;
     end
     data.itr = itr;
     disp('***********************************************************************');
@@ -581,13 +589,14 @@ for itr = 1 : Nitr
         drawnow
     end
 end
-
+data.camExp = camera.exposure;
 %% save data
 eval([data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
 cd(folder.dataLibrary);
 eval(['save ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ';']);
 cd(folder.main);
-% eval(['save model', num2str(kCorrection), ' model;']);
+% cd(folder.dataLibrary);
+% eval(['save model', num2str(runTrial), ' model;']);
 % cd(folder.main);
 
 %% correct model errors - monochromatic
@@ -595,7 +604,9 @@ cd(folder.main);
 G1Learned = model.G1;
 G2Learned = model.G2;
 Qlearned = zeros(2, 2, size(model.G1, 1));
-Rlearned = zeros(2, 2, size(model.G1, 1));
+% Rlearned = zeros(2, 2, size(model.G1, 1));
+Rlearned = zeros(estimator.NumImgPair, estimator.NumImgPair, size(model.G1, 1));
+
 % clean the wavefront control data
 NitrEM = 3;
 uAll = data.DMcommand - [zeros(1904, 1), data.DMcommand(:, 1:end-1)];
@@ -613,15 +624,15 @@ parfor index = 1: size(model.G1, 1)
 %     Q = 3e-9 * eye(2);
 %     R = 3e-14 * eye(estimator.NumImgPair);
     P0 = 1e-4 * eye(2);
-    Q = 3e-8 * eye(2);
-    R = 3e-13 * eye(estimator.NumImgPair);
+    Q = 3e-8 * eye(2); % might need to adjust, might need to make larger
+    R = 3e-13 * eye(estimator.NumImgPair); % might need to adjust
     yAll = squeeze(data.y(index, :, :));
     % online learning
-    delta1 = 1e-1;
-    delta2 = 1e-1;
+    delta1 = 1e-1; % might need to adjust, might need to make smaller
+    delta2 = 1e-1; % might need to adjust, might need to make smaller
     batchSize = 3; % how many observations for each updates
     %%
-    for learningItr = 1 : batchSize : 9
+    for learningItr = 1 : batchSize : 18 %max number should be largest number divisible by 3 and less than Nitr for controls
         u = uAll(:, learningItr : learningItr+batchSize-1);
         uProbe = uProbeAll(:, :, learningItr : learningItr+batchSize-1);
         y = yAll(:, learningItr : learningItr+batchSize-1);
@@ -638,6 +649,7 @@ parfor index = 1: size(model.G1, 1)
 end
 model.G1 = G1Learned;
 model.G2 = G2Learned;
+disp('I am done!');
 % save model model
 % %% correct model errors  - broadband
 % modelBroadband = model;

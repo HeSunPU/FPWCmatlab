@@ -57,3 +57,35 @@ I = cubeRotate(:, :, k)/max(max(cubeRotate(:, :, k)));
 figure(1003), imagesc(I), colorbar
 f = fitFocalLength(I, target, coronagraph, camera)
 
+%%
+imgIFS_rot = rot90(imgIFS, 3);
+imgIFS_rot = fliplr(imgIFS_rot);
+% imgIFS_rot(imgIFS_rot<0) = 0;
+figure, imagesc(log10(abs(imgIFS_rot(120:1024-120, 120:1024-120))/max(max(imgIFS)))), colorbar
+caxis([-5, 0])
+
+%%
+h = figure;
+axis tight manual % this ensures that getframe() returns a consistent size
+wls= [600, 620, 640, 650, 670, 694, 720];
+filename = 'flat_field6.gif';
+for k = 1 : length(wls)
+    % Draw plot for y = x.^n
+    field = fitsread(['flat', num2str(wls(k)), '.fits']);
+    field = fliplr(rot90(field, 3));
+    imagesc(field(120:1024-120, 120:1024-120))
+%     set(gca,'xticklabel',{[]})
+%     set(gca,'yticklabel',{[]})
+    title(['HCIFS PSF Template Animation (', num2str(round(wls(k))), 'nm)'])
+    drawnow
+    % Capture the plot as an image 
+    frame = getframe(h); 
+    im = frame2im(frame); 
+    [imind,cm] = rgb2ind(im,256); 
+    % Write to the GIF File 
+    if k == 1
+      imwrite(imind,cm,filename,'gif', 'DelayTime',1, 'Loopcount',inf); 
+    else 
+      imwrite(imind,cm,filename,'gif', 'DelayTime',1,'WriteMode','append'); 
+    end 
+end

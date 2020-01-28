@@ -5,7 +5,7 @@
 % model and so on;
 %
 
-%% Initialize the path, should change for different computers
+%% Sec #1 - Initialize the path, should change for different computers
 computerID = 'ultron'; % 'ultron', 'hesun', or 'hesunLaptop'
 switch lower(computerID)
     case 'hesun'
@@ -26,7 +26,7 @@ switch lower(computerID)
         folder.controller = 'C:\Lab\FPWCmatlab\controller';
         folder.estimator = 'C:\Lab\FPWCmatlab\estimator';
         folder.hardware = 'C:\Lab\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20190901';
+        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20191015';
         folder.LOWFS = 'C:\Lab\FPWCmatlab\LOWFS';
         folder.python = 'C:\Lab\FPWCpy\active_estimation';
         folder.IFS = 'C:\Lab\FPWCmatlab\IFS';
@@ -58,7 +58,7 @@ addpath(folder.IFS);
 %% The parameters for the optical model
 % including light source, DM model, coronagraph shape and distances
 
-%% Initialize the parameter for the DM
+%% Sec #2 - Initialize the parameter for the DM
 DM.model = 'influencingFunction'; % 'influencingFuntion' (or 'FEM', 'neuralNet')
 DM.DMmesh = [442, 442]; % The pixel number in each direction should better be even, [442, 442] is a good choice to recover surface shape using linear superposition
 DM.Nact = 34; % number of actuators in one direction
@@ -91,7 +91,7 @@ DM.DMperfect = DM;
 DM.DMperfect.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact);%5.06e-9 * ones(DM.Nact, DM.Nact);%5.06e-9 * (ones(DM.Nact, DM.Nact) + 0.8 * (rand(DM.Nact, DM.Nact)-0.5));% %6.27e-9 * ones(DM.Nact, DM.Nact);
 DM.DMperfect.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact);%6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
 
-%% Initialize the coronagraph instrument layout
+%% Sec #3 - Initialize the coronagraph instrument layout
 coronagraph.type = 'SPC';%'VORTEX';%'SPLC';%
 
 coronagraph.SPwidth = 0.01; % width of shaped pupil mask in meters
@@ -123,8 +123,8 @@ if (coronagraph.error)
 end
 coronagraph.coronagraph_perfect = coronagraph;
 coronagraph.coronagraph_perfect.error = 0;
-%% Initialize the parameters for camera
-camera.name = 'Starlight'; %'QSI'; % 
+%% Sec #4 - Initialize the parameters for camera
+camera.name = 'QSI'; %'Starlight'; % 
 if strcmpi(camera.name, 'QSI')
     camera.pitch = 4.54e-6; % pitch size of the camera pixel in meters
     camera.binXi = 4; % pixel binning in x direction
@@ -167,53 +167,77 @@ elseif strcmpi(camera.name, 'Starlight')
     camera.Neta_half = 0.5 * (camera.Neta-1);
     camera.stacking = 1; % number of image for stacking
     camera.exposure = 10; % exposure time in seconds for one image
-    camera.center = [52, 54];%[52,54];%[52, 53];%[186, 294];
+    camera.center = [55, 54];%[55, 56];%[54, 55];%[53, 55];%[54, 54];%[52, 54];%[52,54];%[52, 53];%[186, 294];
     camera.readoutstd = 12;%12; %0.01; % stand deviation of camera readout noise
     camera.noise = 1; % 1 stand for that we put some virtual noises in the simulation
-    camera.darkFrame = 1267;%1.2789e+03;
+    camera.darkFrame = 1263;%1.2789e+03;
     camera.philens = 26.56505117707799;
     camera.IFSlam = 1e-9 * [603.04640033, 609.1856823 , 615.3874649 , 621.65238443, ...
        627.98108364, 634.37421183, 640.83242493, 647.35638552, ...
        653.94676295, 660.60423337, 667.32947981, 674.12319227, ...
        680.98606776, 687.91881039, 694.92213144, 701.99674943, ...
        709.14339019, 716.36278695];
-   camera.IFSflux = 1e6 * [1.1440, 1.4384, 1.7616, 1.8760, 2.0285, 2.1937, ...
-        2.1369,2.0501, 2.0452, 2.2195, 2.2427, 2.1032, 1.9309, 1.7144, ...
-        1.4669, 1.1736, 0.9695, 0.7530];
-   camera.IFSlamSam = 3:3:15;
+   
+    camera.IFSflux = [26791938.7468077,27705595.4467567,29493304.1418635,30506072.0489820,29914566.4742719,29722596.8133114,29292508.1059290,29363886.2721767,29589173.8275212,30451860.8533752,30898262.6542102,30932912.7955735,30974470.4985311,30195761.4695486,29485110.1558805,26978044.1581202,24403012.5128366,20578861.7678486];
+    % First one post spatial filter: [19256720.4896028,19757418.9034247,21285463.0910513,20956079.5165011,20727343.0204110,20413054.2595488,20799266.4711976,21080280.3552267,21045859.8496449,21755968.5129265,21817239.0280621,21723794.6199019,21928323.8624936,21883157.0369763,21561623.6919506,21292976.4909803,19995660.6773757,18352879.7180432];
+    % Last one pre- new spatial filter:%[278340.135473760,348386.194342463,429315.443473963,581072.447845133,670737.526315581,724198.935853289,722577.234219789,728424.375886114,724278.554542832,680952.027787953,672273.074570652,569703.505286769,543710.324409378,518210.962868499,478605.379451082,384055.651038802,332053.525174727,308661.594644962];
+    
+%     1e6 * [1.1905, 1.5008, 1.8965, 2.3415, 2.5271, 2.4440, ...
+%         2.3371, 2.0909, 2.0608, 1.8734, 1.9277, 1.9013, 1.9853, 1.7657, ...
+%         1.6562, 1.5770, 1.4459, 1.3117]; %[1100217.00308190,1526333.79083406,1893574.46587861,2009284.78083710,2300614.42936023,2226927.31828514,2115421.24391296,2142733.13148029,1915865.88429213,1901940.56347266,2118354.67601292,2061433.13110379,1873361.43235083,1831964.11345055,1710662.01492352,1512577.91931564,1252198.32123141,1160692.24759962];%
+    camera.IFSlamSam = 3:3:15;
+    
+%     camera.IFSflux = 1e6 * [0.1152, 0.1503, 0.2618, 0.4964, 0.9316, 1.0780, ...
+%         0.7908, 0.4035, 0.2086, 0.1696, 0.1685, 0.1619, 0.1726, 0.1921, ...
+%         0.1639, 0.1746, 0.1468, 0.1368] * 20.28;
+%     camera.IFSlamSam = 6;
    %% change the focal length if we are using IFS
    coronagraph.focalLength = 2.59;
    coronagraph.coronagraph_perfect.focalLength = coronagraph.focalLength;
 end
 
-%% Initialize the parameters for the target, now only consider the monochromatic case
-% target.laser = serial('COM12','BaudRate',115200,'Terminator','CR');
+%% Sec #5 - Initialize the parameters for the target, now only consider the monochromatic case
 target.channel = [3, 4, 6, 7, 8, 9, 10];
-% target.channel = [10];
+if strcmpi(camera.name, 'QSI')
+    % Initialize filter wheel for QSI case
+    target.laser = serial('COM12','BaudRate',115200,'Terminator','CR'); %initialize filter wheel for QSI case
+    fopen(target.laser)
+    
+    target.starWavelengthBroad = 1e-9 * [600,620,640,650,670,694.3,720];
+    target.fluxBroadband = [4.4408e5, 7.1824e5, 6.4512e5, 6.6056e5, 5.2720e5, 3.9396e5];%[1.283e7];
+    % target.channel = [10];
+elseif strcmpi(camera.name, 'Starlight')
+    target.starWavelengthBroad = camera.IFSlam(camera.IFSlamSam); %
+    % target.starWavelengthBroad = 1e-9 * [635]; %
+    
+%     target.broadSampleNum = length( target.starWavelengthBroad); % The length of broadband wavelengths
+    target.fluxBroadband = camera.IFSflux(camera.IFSlamSam);
+end
 
 target.star = 1; % 1 for 'on', 0 for 'off'
 target.planet = 0; % 1 for 'on', 0 for 'off'
 target.broadBandControl = 1; % broadband control or monochromatic control
 target.planetContrast = 1e-8; % the contrast of planet compared with star
 target.starWavelength = 660e-9; %658e-9;% Unit: meters
-% target.starWavelengthBroad = 1e-9 * [600,620,640,650,670,694.3,720]; %[550,577,600,620,632.8,640,650,670,694.3,720,740]; % The broadband wavelengths
-target.starWavelengthBroad = camera.IFSlam(camera.IFSlamSam); %
-% target.starWavelengthBroad = 1e-9 * [635]; %
+
+% % target.starWavelengthBroad = 1e-9 * [600,620,640,650,670,694.3,720]; %[550,577,600,620,632.8,640,650,670,694.3,720,740]; % The broadband wavelengths
+% target.starWavelengthBroad = camera.IFSlam(camera.IFSlamSam); %
+% % target.starWavelengthBroad = 1e-9 * [635]; %
 
 target.broadSampleNum = length(target.starWavelengthBroad); % The length of broadband wavelengths
 target.planetWavelength = 648e-9; % Unit: meters
 target.separation = 8; % Unit: Wavelength / Diameter (lambda / D)
 target.normalization = 220.6292;%147.1332 for lab simulation; %1; % normalization factor for simulated images
 target.flux = 1.5474e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
-% target.fluxBroadband = [6.07e6, 6.92e6, 6.7733e6, 7.9e6, 6.9333e6, 5.1533e6, 6.84e6];% for QSI
-% target.fluxBroadband = [3.1840e5, 4.7700e5, 5.0067e5, 5.5333e5, 4.6467e5, 3.0183e5]; % for starlight express IFS
-target.fluxBroadband = camera.IFSflux(camera.IFSlamSam);
-% target.fluxBroadband = [6.84e6];
-% target.fluxBroadband = [1.5474e+09];
-
-
-% target.fluxBroadband = [1.1e7];%[1.283e7];
-% target.fluxBroadband = [4.4408e5, 7.1824e5, 6.4512e5, 6.6056e5, 5.2720e5, 3.9396e5];%[1.283e7];
+% % target.fluxBroadband = [6.07e6, 6.92e6, 6.7733e6, 7.9e6, 6.9333e6, 5.1533e6, 6.84e6];% for QSI
+% % target.fluxBroadband = [3.1840e5, 4.7700e5, 5.0067e5, 5.5333e5, 4.6467e5, 3.0183e5]; % for starlight express IFS
+% target.fluxBroadband = camera.IFSflux(camera.IFSlamSam);
+% % target.fluxBroadband = [6.84e6];
+% % target.fluxBroadband = [1.5474e+09];
+% 
+% 
+% % target.fluxBroadband = [1.1e7];%[1.283e7];
+% % target.fluxBroadband = [4.4408e5, 7.1824e5, 6.4512e5, 6.6056e5, 5.2720e5, 3.9396e5];%[1.283e7];
 
 
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
@@ -251,9 +275,9 @@ if strcmpi(coronagraph.type, 'SPC')
     coronagraph.FPMpixelIndex = find(coronagraph.FPMmask(:) == 1); % the pixel indices in the non-FPM-blocked region
     coronagraph.FPMpixelNum = length(coronagraph.FPMpixelIndex); % the number of pixels in the non-FPM-blocked region
 end
-%% Initialize the dark hole region
+%% Sec #6 - Initialize the dark hole region
 darkHole.type = 'wedge';%'box';%'circ';% % the type(shape) of the dark hole regions - 'wedge' or 'box' or 'circ'
-darkHole.side = 'L';%'LR';%'R';% % the side where dark holes located - 'L', 'R' or 'LR'
+darkHole.side = 'LR';%'LR';%'R';% % the side where dark holes located - 'L', 'R' or 'LR'
 darkHole.rangeX = [7, 10]; % used for 'box' dark hole only, unit - f * lambda / D
 darkHole.rangeY = [-3, 3]; % used for 'box' dark hole only, unit - f * lambda / D
 darkHole.rangeR = [6, 9];%[2.5, 9] for SPLC;%[6, 10]; %[5.5, 10.5]; % used for 'wedge' dark hole only, unit - f * lambda / D
@@ -264,12 +288,12 @@ darkHole.mask = createMask(target, coronagraph, camera, darkHole.type, ...
 darkHole.pixelIndex = find(darkHole.mask(:) == 1); % the pixel indices in the dark hole region
 darkHole.pixelNum = length(darkHole.pixelIndex); % the number of pixels in the dark holes
 
-%% Initialize the controllers
+%% Sec #7 - Initialize the controllers
 controller.type = 'EFC';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
 controller.whichDM = 'both';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
 controller.alpha = 1e-4;%3e-5;%1e-4;%3e-8;%3e-5;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
 
-%% Initialize the estimators
+%% Sec #8 - Initialize the estimators
 estimator.type = 'batch';%'EKF';%'Kalman';%%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
 estimator.whichDM = '1';%'both';% % which DM we use for probing, '1', '2' or 'both'
 estimator.NumImgPair = 2; % Used when EKFpairProbing is 1
@@ -283,7 +307,7 @@ estimator.itrEKF = 10;%10;%10;%3; % Used for 'EKF' only, IEKF iterations to make
 estimator.itrUKF = 10;%10; % Used for 'UKF' only, which has similar formula to IEKF
 estimator.probeArea = [1, 17, -17, 17]; %[0, 17, -17, 17]; % Define the region in lambda / D
 estimator.probeMethod = 'Empirical'; %'OptimalOffsets';% 'Empirical' or 'OptimalOffsets', choose the best probing offset to reduce state covariance
-estimator.measuredAmp = 1;%1; % 1 or 0, 1 stands for that we adjust the probing amplitude using measured images
+estimator.measuredAmp = 0;%0;%1; % 1 or 0, 1 stands for that we adjust the probing amplitude using measured images
 estimator.saveData = 0; % 1 or 0, 1 stands for that we want to save the probing command and images for future run
 estimator.stateStd0 = 1e-5;%7e-6;%1e-6 % the coefficient used to initialize the state covariance, used for Kalman filter and extended Kalman filter
 estimator.processVarCoefficient = 5e-9;%6e-9;%3e-8;% 3e-9 for physics model;%3e-8;%0.05 * 1e-7;%0.05 * 1e-7;%0.01 * 1e-7 for EKF 2 pair and UKF 2 images%0.01 * 1e-8; for EKF 1 pair and 1 image%0.3 * 1e-7 for lab% the coefficient used for compute the process covariance noise, used for Kalman filter and extended Kalman filter
@@ -311,7 +335,7 @@ estimatorBatch.activeSensing = 0;
 % active sensing part
 estimator.activeSensing = 0;
 
-%% Initialize the structure for saving data
+%% Sec #9 - Initialize the structure for saving data
 
 if strcmpi(controller.type, 'EFC')
 %-------------------------------- EFC -------------------------------------
@@ -322,6 +346,7 @@ if strcmpi(controller.type, 'EFC')
         data.IFSimage = zeros(1024, 1024, Nitr);
         data.I0 = zeros(camera.Neta, camera.Nxi, target.broadSampleNum); % used to save the original focal images
         data.I = zeros(camera.Neta, camera.Nxi, target.broadSampleNum, Nitr); % used to save the focal images after each control iteration
+        data.Ip = zeros(camera.Neta, camera.Nxi, target.broadSampleNum, 2*estimator.NumImgPair+1, Nitr);
         data.EfocalEst = zeros(darkHole.pixelNum, target.broadSampleNum, Nitr); % the estimated coherent electric field at each iteration
         data.IincoEst = zeros(darkHole.pixelNum, target.broadSampleNum, Nitr); % the estimated incoherent light itensity
         data.EfocalEstPerfect = zeros(darkHole.pixelNum, target.broadSampleNum, Nitr); % the estimated coherent electric field at each iteration
