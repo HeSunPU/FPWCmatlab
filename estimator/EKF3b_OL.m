@@ -15,6 +15,8 @@ function [EfocalEst, IincoEst, data] = EKF3b_OL(u, image, darkHole, model, estim
 % controller - the properties of the controller
 % estimator - the properties of estimator
 %
+% Q - uses std dev of drift DM command
+%
 % check number of inputs
 if nargin > 8
     disp('Wrong number of input parameters!!');
@@ -159,7 +161,7 @@ end
 R = estimator.observationVarCoefficient * eye(estimator.NumImg) + temp;
 
 % This should be the drift std dev
-Q = (sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2); % for simulation
+Q = estimator.driftStd*eye(2);%(sum(command.^2) * estimator.processVarCoefficient + estimator.processVarCoefficient2) * eye(2); % for simulation
 
 % figure
 % plot(command)

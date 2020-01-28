@@ -199,7 +199,7 @@ camera.blockedCoordXi = floor((camera.blockedXi(1)-camera.visionXi(1))/(camera.v
 camera.blockedCoordEta = floor((camera.blockedEta(1)-camera.visionEta(1))/(camera.visionEta(2)-camera.visionEta(1))*camera.Neta): ...
     ceil((camera.blockedEta(2)-camera.visionEta(1))/(camera.visionEta(2)-camera.visionEta(1))*camera.Neta);
 camera.readoutstd = 12;%12; %0.01; % stand deviation of camera readout noise
-camera.noise = 1; % 1 stand for that we put some virtual noises in the simulation
+camera.noise = 0; % 1 stand for that we put some virtual noises in the simulation
 camera.adaptive_exposure = 0; % 1 stands for adapting camera exposure time for each image
 
 %% Initialize the parameters for the target, now only consider the monochromatic case

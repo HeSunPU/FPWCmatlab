@@ -221,7 +221,7 @@ target.driftDM = '1';%'1'; %which DM is used to introduce the speckle drift
 % target.driftcmd = zeros(DM.activeActNum,Nitr);
 target.driftImages = 3; % takes one image with just DH command and drift command every three images
 target.driftDisp = 1.2e-8; % max drift disp on mirror face in m
-target.driftScaling = 0.1;%0.5;% 0.01; % scales drift commant wrt target drif displacement
+target.driftScaling = 0.5;%0.5;% 0.01; % scales drift commant wrt target drif displacement
 
 
 
@@ -378,7 +378,7 @@ darkHole.pixelNum = length(darkHole.pixelIndex); % the number of pixels in the d
 controller.type = 'efc';%%'speckleNulling';% % the controller type we use, 'EFC, 'speckleNulling', or 'robustLP'
 controller.whichDM = '2';%'1';%  % which DM we use for wavefront control, '1', '2' or 'both'
 if strcmpi(controller.type, 'EFC')
-    controller.alpha = 1e-4;%<GOOD 3e-5;% ONE 1e-4;%3e-4;%5e-7;%sfr 3e-4;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
+    controller.alpha = 3e-6;%1e-4;%<GOOD 3e-5;% ONE 1e-4;%3e-4;%5e-7;%sfr 3e-4;%5e-7;%%1.8e-8;%1e-6;%3e-8;%5e-6;%1e-5; %3e-8; % the Tikhonov regularization parameter for 'EFC'
     controller.lineSearch = 0; % 1 stands for add constraint that enforces the target contrast larger than estimation covariance
     if controller.lineSearch
         data.control_regularization = zeros(Nitr, 1);
@@ -438,7 +438,7 @@ end
 % controller.linearControllerType = 'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin';%'cvxEnergyMin';%'SOSstrokeMin'; %'energyMin';
 
 %% Initialize the estimators
-estimator.type = 'batch';%'ekf_speckle';%'ekf_speckle';%'EKF';%'EKF';%'EKF';%'EKF';%'batch';%'EKF';%'EKF';%'batch';%'batch';%'Kalman';%%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
+estimator.type = 'ekf_speckle';%'ekf_speckle';%'EKF';%'EKF';%'EKF';%'EKF';%'batch';%'EKF';%'EKF';%'batch';%'batch';%'Kalman';%%'perfect';% % the estimator type, 'perfect', 'batch', 'Kalman', 'EKF', 'UKF', 'overallKalman', 'preProcessKalman'
 estimator.whichDM = '2';%'both';% % which DM we use for probing, '1', '2' or 'both'
 estimator.NumImgPair = 2; % Used when EKFpairProbing is 1, if NumImgPair = 1, two images are used (positive and negative versions of the probe command)
 estimator.NumImg = 1; %CHANGE BACK TO 1 % Used when EKFpairProbing is 0
@@ -500,7 +500,7 @@ end
 if strcmpi(estimator.type, 'ekf_speckle')
 %     estimator.ditherStd = 2e-4 ; %this should change with contrast?
     estimator.ditherScaling = 10;%10;%200 % used to scale dither command wrt EFC command
-    estimator.CL = 0; % if 1, EKF estimates the closed loop field, if 0 EKF estimates the open loop field
+    estimator.CL = 1; % if 1, EKF estimates the closed loop field, if 0 EKF estimates the open loop field
     estimator.check = 1; % if 1, takes probed images and does alternate esitmate of the electric field to compare with EKF
 end
 
@@ -637,8 +637,20 @@ elseif strcmpi(controller.type, 'EFC')
                 data.Driftcommand = zeros(2*DM.activeActNum,Nitr);
                 data.Dithercommand = zeros(2*DM.activeActNum,Nitr);
                 
-                data.targetFlux = target.flux;
-                data.camExp = camera.exposure;
+                data.targetFlux = target.flux; %*
+                data.camExp = camera.exposure; %*
+                
+                % When running OL calc after DH maintenance
+                itrOL = 1;
+                ItrImgOL = 0:target.driftImages:Nitr;
+                Nimg_OL = floor(Nitr/target.driftImages);
+                data.imageSetLiveOL = zeros(camera.Neta, camera.Nxi, Nimg_OL);
+                data.measuredContrastAverageLiveOL = zeros(Nimg_OL,1);
+                
+                data.imageSetOL = zeros(camera.Neta, camera.Nxi, Nitr);
+                data.measuredContrastAverageOL = zeros(Nitr,1);
+                data.pixelIndex = darkHole.pixelIndex;
+
             end
         else
             if estimator.EKFpairProbing
@@ -692,19 +704,10 @@ elseif strcmpi(controller.type, 'EFC')
     end
 end
 data.estimator = estimator;
+
 data.probe_exposure = zeros(Nitr, 1);
 data.image_exposure = zeros(Nitr, 1);
 
-% When running OL calc after DH maintenance
-itrOL = 1;
-ItrImgOL = 0:target.driftImages:Nitr;
-Nimg_OL = floor(Nitr/target.driftImages);
-data.imageSetLiveOL = zeros(camera.Neta, camera.Nxi, Nimg_OL);
-data.measuredContrastAverageLiveOL = zeros(Nimg_OL,1);
-
-data.imageSetOL = zeros(camera.Neta, camera.Nxi, Nitr);
-data.measuredContrastAverageOL = zeros(Nitr,1);
-data.pixelIndex = darkHole.pixelIndex;
 
 
 if strcmpi(simOrLab, 'simulation')

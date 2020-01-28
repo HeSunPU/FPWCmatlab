@@ -27,16 +27,18 @@ title(['Coherent light after control iteration ', num2str(itr)]);
 
 %% contrast correction curve - average
 if target.broadBandControl
-%     figure(2), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o' ,0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s', 0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
+    %     figure(2), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o' ,0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s', 0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
 else
+    
     subplot(2,3,4), semilogy(0:itr, [data.contrast0; data.measuredContrastAverage(1:itr)],'-o',...
         0:itr, [data.estimatedContrastAverage0; data.estimatedContrastAverage(1:itr)],'-s', ...
         0:itr, [data.estimatedIncoherentAverage0; data.estimatedIncoherentAverage(1:itr)], '-^',...
-        0:itr,[data.estimatedContrastAverage0; data.estOpenLoopContrast(1:itr)],'-d');
+        0:itr,[data.estimatedContrastAverage0; data.estOpenLoopContrast(1:itr)],'-d',...
+        ItrImgOL(1:itrOL),data.measuredContrastAverageLiveOL(1:itrOL,1),'-p');
 end
 % ylim([10^(cRange(1)), 10^(cRange(2))]);
 ylim([10^(cRange(1)), 10^(cRange(2)+2)]);
-legend('measured', 'estimated', 'incoherent','open loop');
+legend('measured', 'estimated', 'incoherent','open loop est','open loop measured');
 xlabel('iteration');
 ylabel('contrast');
 drawnow
