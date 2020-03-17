@@ -3,20 +3,20 @@
 darkCam = camera.darkFrame;
 numIm = 1;
 %     numIm = 1;
-camera.exposure = 1e-4;%0.03;% 0.001;%0.0001;%0.1;%
+camera.exposure = 1e-3;%0.03;% 0.001;%0.0001;%0.1;%
 
 img = takeImg(camera.handle, numIm, camera.exposure, [0,0], [500, 500], [4, 4]);
 
 testImg = (double(rot90(img-darkCam,1)));
 max(max(testImg))
 
-figure
-imagesc(((testImg)))
+figure(3)
+imagesc((abs(testImg)))
 % imagesc(log10(abs(testImg)))
 colormap jet;
 colorbar
 %% Calculate DM Pitch
-s = 387-314; % distance bt main psf and ghost psf in pixels
+s = 324-252; % distance bt main psf and ghost psf in pixels
 DMperiod = 2; % number of actuators per sine wave on DM
 DMpitch = (1/DMperiod)*coronagraph.focalLength*target.starWavelength/(camera.binXi*camera.pitch*s)
 
@@ -26,8 +26,8 @@ DMpitch = (1/DMperiod)*coronagraph.focalLength*target.starWavelength/(camera.bin
 %     load I0
 %     load psf
 % end
-laser_power = [7;49];%[7;31];%
-exposure_time = [0.2;0.0001];%[0.03;1e-4];
+laser_power = [6;16];%[7;49];%[7;31];%
+exposure_time = [0.008;1e-3];%[0.2;0.0001];%[0.03;1e-4];
 % exposure_time = [0.0008;0.0001];
 wing_max = zeros(size(laser_power));
 wm_ind = zeros(size(laser_power));
@@ -89,7 +89,7 @@ camera.center  = [centX(1),centY(1)] % right order?
 target.flux = (wing_max(2)/wing_max(1))*psf_max(1)/exposure_time(2)
 
 
-% tf_check = (camCentImgs(108,317,2)/camCentImgs(108,317,1))*camCentImgs(145,316,1)/exposure_time(2)
+% tf_check = (camCentImgs(106,322,2)/camCentImgs(106,322,1))*camCentImgs( 143, 321,1)/exposure_time(2)
 
 %% For SuperK monocrhomatic:
 

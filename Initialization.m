@@ -27,7 +27,7 @@ switch lower(computerID)
         folder.controller = 'C:\Lab\FPWCmatlab\controller';
         folder.estimator = 'C:\Lab\FPWCmatlab\estimator';
         folder.hardware = 'C:\Lab\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20191125';
+        folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20201003';
         folder.LOWFS = 'C:\Lab\FPWCmatlab\LOWFS';
         folder.python = 'C:\Lab\FPWCpy\active_estimation';
     case 'hesunlaptop'
@@ -60,7 +60,7 @@ addpath(folder.hardware);
 DM.model = 'influencingFunction'; % 'influencingFuntion' (or 'FEM', 'neuralNet')
 DM.DMmesh = [442, 442]; % The pixel number in each direction should better be even, [442, 442] is a good choice to recover surface shape using linear superposition
 DM.Nact = 34; % number of actuators in one direction
-DM.pitch = 2.7859e-04;% <-Seems small 2.8347e-04;%284.18e-06;%280.05e-6;%284.28e-6;%282.85e-06;%280.15e-06;%280.64e-6;%286.17e-6;%282.64e-6;% pitch size of DM actuator in meters, 301e-6 for SPLC, 282.7e-6 for SPC
+DM.pitch =2.8246e-04;% 2.7859e-04;% <-Seems small 2.8347e-04;%284.18e-06;%280.05e-6;%284.28e-6;%282.85e-06;%280.15e-06;%280.64e-6;%286.17e-6;%282.64e-6;% pitch size of DM actuator in meters, 301e-6 for SPLC, 282.7e-6 for SPC
 DM.widthDM = DM.pitch * DM.Nact; % DM width in meters, usually the DM is square
 DM.DM1gain = 5.06e-9 * ones(DM.Nact, DM.Nact); %6.27e-9 * ones(DM.Nact, DM.Nact);
 DM.DM2gain = 6.27e-9 * ones(DM.Nact, DM.Nact); % the DM gain (voltage to height) of each actuator, unit: meter / volt
@@ -96,7 +96,7 @@ if strcmpi(coronagraph.type, 'SPC') % 'Shaped pupil coroangraph'
     coronagraph.SPwidth = 0.01; % width of shaped pupil mask in meters
     coronagraph.Nsp = round(coronagraph.SPwidth / DM.widthDM * DM.DMmesh(1)); % number of pixels in one direction of shaped pupil mask matrix
     coronagraph.zDM2toSP = 0.5334;%0.51308;%0.581; % distance from DM2 to shaped pupil mask in meters
-    coronagraph.focalLength = 1.1632;%1.1683;%1.1703;%1.1165;%<- SEEMS WRONG 1.1693;%1.1707;%1.16;%1.35;%1.1727;%0.8034;%1.1727;%1.1729;%1.1704;%1.1697;%1.1638;%1.1786;%1.1630;%1.1676;%1.1642;%1.13;%1.1528;%1.141;%1.1379; %1.1652;%1.85; % focal length in meters
+    coronagraph.focalLength = 1.1701;%1.1632;%1.1683;%1.1703;%1.1165;%<- SEEMS WRONG 1.1693;%1.1707;%1.16;%1.35;%1.1727;%0.8034;%1.1727;%1.1729;%1.1704;%1.1697;%1.1638;%1.1786;%1.1630;%1.1676;%1.1642;%1.13;%1.1528;%1.141;%1.1379; %1.1652;%1.85; % focal length in meters
     coronagraph.SPshape = load([folder.optics '/SPs/ripple3_256x256_ideal_undersized.txt']);
     % coronagraph.SPshape = MakeMaskEllipse12b(coronagraph.Nsp/2, folder);
     % coronagraph.FPM = ones(camera.Nxi, camera.Neta);
@@ -181,7 +181,7 @@ camera.exposure = 0.1; % exposure time in seconds for one image
 camera.exposure0 = 0.1; % the exposure time used for non-probe image
 camera.newDarkFrame = 1; % 1 for taking new dark frame, 0 for using existed dark frame
 camera.centerLabView = [273, 293]; % only works for same binning, [500-x, y]
-camera.center = [153,314];%[154,317];%[152   313];%[153,319];%[97,316];%[97,314];%[89 313];%[91   314];%[131,312];%[127,296];%[128,301];%[126,301];%[125,296];%[144 ,  301];%[126 ,  293];%[129 ,  296];%[165, 299];%[186, 294];%[193, 295];%[196, 320];%[199,321];% [210, 290];%[214, 288];%[206, 253];%[196, 262];%[196, 263];%[198, 263];%[205, 266];%[209, 286];%[217, 295];%[163, 234];%[167, 278];%[171, 300];%[140, 282];%[138, 287];%[140, 286];%[130,296];%[135, 302];%[112, 308];%[113, 310];%[113, 304];%[114, 303];%[112, 302];%[113, 302];%[113, 304];%[117, 302];%[118, 301];%[140, 264];%[142, 264];%[279, 243];%[280, 243];%[277, 248];%[250, 264];%[249, 285];%[250, 284];%[245, 281];%[245, 280];%[227,295];%[227,293];%[176, 314];%[254, 303];%[253, 303];%[252, 302];%[253, 303];%[252, 302];%[253, 303];%[253, 304];%[255, 305];%[254, 304];%[256, 307];%[255, 309];%[255, 310];%[256,310];%[256,311];%[257,311];%[257, 312];%[175,314];%[176, 334];%[176,334];%[178, 337];%[217, 257];%[219, 261];%[267, 275];%[266, 276];%[267, 274];%[269, 274];%[268, 277];%[194, 239];%[195, 238];%[255, 230];%[255, 231];%[232, 216];%[231, 220];%[232, 221];%[231, 224];%[232, 221]; % the center position of PSF on camera
+camera.center = [139,302];%[143,321];%[144,320];%[149,326];% [ 149  , 325];%[153,314];%[154,317];%[152   313];%[153,319];%[97,316];%[97,314];%[89 313];%[91   314];%[131,312];%[127,296];%[128,301];%[126,301];%[125,296];%[144 ,  301];%[126 ,  293];%[129 ,  296];%[165, 299];%[186, 294];%[193, 295];%[196, 320];%[199,321];% [210, 290];%[214, 288];%[206, 253];%[196, 262];%[196, 263];%[198, 263];%[205, 266];%[209, 286];%[217, 295];%[163, 234];%[167, 278];%[171, 300];%[140, 282];%[138, 287];%[140, 286];%[130,296];%[135, 302];%[112, 308];%[113, 310];%[113, 304];%[114, 303];%[112, 302];%[113, 302];%[113, 304];%[117, 302];%[118, 301];%[140, 264];%[142, 264];%[279, 243];%[280, 243];%[277, 248];%[250, 264];%[249, 285];%[250, 284];%[245, 281];%[245, 280];%[227,295];%[227,293];%[176, 314];%[254, 303];%[253, 303];%[252, 302];%[253, 303];%[252, 302];%[253, 303];%[253, 304];%[255, 305];%[254, 304];%[256, 307];%[255, 309];%[255, 310];%[256,310];%[256,311];%[257,311];%[257, 312];%[175,314];%[176, 334];%[176,334];%[178, 337];%[217, 257];%[219, 261];%[267, 275];%[266, 276];%[267, 274];%[269, 274];%[268, 277];%[194, 239];%[195, 238];%[255, 230];%[255, 231];%[232, 216];%[231, 220];%[232, 221];%[231, 224];%[232, 221]; % the center position of PSF on camera
 camera.blockedXi = [-3, 3]; 
 camera.blockedEta = [-3, 3]; % the blocked region by FPM, used for evaluating the background light and noise
 camera.blockedCoordXi = floor((camera.blockedXi(1)-camera.visionXi(1))/(camera.visionXi(2)-camera.visionXi(1))*camera.Nxi): ...
@@ -204,7 +204,7 @@ target.broadSampleNum = length(target.starWavelengthBroad); % The length of broa
 target.planetWavelength = 648e-9; % Unit: meters
 target.separation = 8; % Unit: Wavelength / Diameter (lambda / D)
 target.normalization = 220.6292;%147.1332 for lab simulation; %1; % normalization factor for simulated images
-target.flux =  2.7516e+09;%1.9383e+09;%1.1775e+09;%2.0381e+09;%1.9475e+09;%2.0196e+09;%4.5057e+09;%<- uses laser power 55 1.9401e+09;%2.0068e+09;%1.9611e+09;%1.9576e+09;%1.9475e+09;%1.9384e+09;%2.0293e+09;%2.0251e+09;%2.1475e+09;% 3.188e+8;%1.878e+09;%1.576e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
+target.flux =1.9808e+08;%2.2812e+09;% 2.4117e+09;%2.3546e+09;% 2.4424e+09;% 2.7516e+09;%1.9383e+09;%1.1775e+09;%2.0381e+09;%1.9475e+09;%2.0196e+09;%4.5057e+09;%<- uses laser power 55 1.9401e+09;%2.0068e+09;%1.9611e+09;%1.9576e+09;%1.9475e+09;%1.9384e+09;%2.0293e+09;%2.0251e+09;%2.1475e+09;% 3.188e+8;%1.878e+09;%1.576e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
 
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
 target.NdriftMode = 18;

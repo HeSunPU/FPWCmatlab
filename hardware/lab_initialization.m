@@ -191,7 +191,7 @@ figure(101), imagesc(log10(abs(cube(:, :, 1)))), colorbar;
 %% Align FPM XY QSI
 DM1command = zeros(DM.activeActNum, 1);
 DM2command = zeros(DM.activeActNum, 1);
-camera.exposure = 0.01;
+camera.exposure = 2e-3;%0.05;
 I0 = getImg(target, DM, coronagraph, camera, DM1command, DM2command, simOrLab);
 figure(100), imagesc(log10(abs(I0))), colorbar;
 % hold on

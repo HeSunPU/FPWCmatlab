@@ -4,11 +4,11 @@ clear;
 close all;
 
 %% Initialize the system and parameters
-Nitr =15;%4000; % iterations of control loop
+Nitr =20;%4000; % iterations of control loop
 cRange = [-8, -3]; %[-12, -3];% the range for display
 simOrLab ='lab';%   'lab';%'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
-runTrial = 1;
-Initialization_Maint;
+runTrial = 3;
+Initialization;
 
 %% Initialize the hardware driver if we are running experiment
 % Laser_Enable('on');
@@ -112,8 +112,8 @@ end
 %     runTrial = kCorrection;
 %% take focal plane image with no DM poking
 % For  thorlabs laser:
-camera.exposure = 0.01;
-camera.exposure0 = 0.01;
+camera.exposure = 0.05;%0.01;
+camera.exposure0 = 0.05;%0.01;
 % For superK
 % camera.exposure = 0.1;
 % camera.exposure0 = 0.1;
@@ -191,14 +191,14 @@ drawnow
 %% Control loop start
 for itr = 1 : Nitr
     if itr <= 4
-        camera.exposure = 0.01;% 0.4; %0.01
-        camera.exposure0 = 0.01;%0.4;
-    elseif itr <= 15
-        camera.exposure = 0.1;%0.5; %0.1
-        camera.exposure0 = 0.1;%0.5;
+        camera.exposure = 0.1;%0.01;% 0.4; %0.01
+        camera.exposure0 = 0.1;%0.01;%0.4;
+    elseif itr <= 10
+        camera.exposure = 0.3;%0.1;%0.5; %0.1
+        camera.exposure0 = 0.3;%0.1;%0.5;
     else
-        camera.exposure = 0.3;%0.9; %0.3
-        camera.exposure0 =0.3;% 0.9;
+        camera.exposure = 0.5;%0.3;%0.9; %0.3
+        camera.exposure0 =0.5;%0.3;% 0.9;
     end
     data.itr = itr;
     disp('***********************************************************************');
