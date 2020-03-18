@@ -7,7 +7,7 @@
 %
 
 %% Initialize the path, should change for different computers
-computerID = 'ultron'; % 'ultron', 'hesun', or 'hesunLaptop'
+computerID = 'walle_w'; % 'ultron', 'hesun', or 'hesunLaptop'
 switch lower(computerID)
     case 'hesun'
         folder.main = 'C:\Users\hesun\Google Drive\Kasdin_lab\FPWC';
@@ -30,6 +30,16 @@ switch lower(computerID)
         folder.dataLibrary = 'C:\Lab\FPWCmatlab\dataLibrary\20201003';
         folder.LOWFS = 'C:\Lab\FPWCmatlab\LOWFS';
         folder.python = 'C:\Lab\FPWCpy\active_estimation';
+    case 'walle_w'
+        folder.main = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab';
+        folder.optics = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\opticalModel';
+        folder.DM = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\DMmodel';
+        folder.SSM = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\stateSpaceModel';
+        folder.controller = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\controller';
+        folder.estimator = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\estimator';
+        folder.hardware = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\hardware';
+        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200317';
+        folder.LOWFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\LOWFS';
     case 'hesunlaptop'
         folder.main = pwd;
         folder.optics = [pwd, '\opticalModel'];
@@ -592,6 +602,12 @@ elseif strcmpi(controller.type, 'EFC')
         data.backgroundAverage = zeros(Nitr, 1); % the average contrast of background
         data.backgroundStd = zeros(Nitr, 1); % the std deviation of the backgroud
         data.probeContrast = zeros(Nitr, 1); % the probe contrast
+        
+        data.dImeasured2D = zeros(camera.Neta, camera.Nxi, Nitr);
+        data.dImodel2D = zeros(camera.Neta, camera.Nxi, Nitr);
+        data.IincoEst2D = zeros(camera.Neta, camera.Nxi, Nitr);
+        data.IcoEst2D = zeros(camera.Neta, camera.Nxi, Nitr);
+        
         if strcmpi(estimator.type, 'ekf')% && ~estimator.EKFpairProbing
             if estimator.nonProbeImage
                 data.y = zeros(darkHole.pixelNum, estimator.NumImg+1, Nitr);

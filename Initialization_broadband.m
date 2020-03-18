@@ -6,7 +6,7 @@
 %
 
 %% Sec #1 - Initialize the path, should change for different computers
-computerID = 'ultron'; % 'ultron', 'hesun', or 'hesunLaptop'
+computerID = 'walle_w' % 'ultron', 'hesun', or 'hesunLaptop'
 switch lower(computerID)
     case 'hesun'
         folder.main = 'C:\Users\hesun\Google Drive\Kasdin_lab\FPWC';
@@ -30,6 +30,18 @@ switch lower(computerID)
         folder.LOWFS = 'C:\Lab\FPWCmatlab\LOWFS';
         folder.python = 'C:\Lab\FPWCpy\active_estimation';
         folder.IFS = 'C:\Lab\FPWCmatlab\IFS';
+    case 'walle_w'
+        folder.main = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab';
+        folder.optics = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\opticalModel';
+        folder.DM = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\DMmodel';
+        folder.SSM = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\stateSpaceModel';
+        folder.controller = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\controller';
+        folder.estimator = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\estimator';
+        folder.hardware = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\hardware';
+        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200317';
+        folder.LOWFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\LOWFS';
+%         folder.python = 'C:\Lab\FPWCpy\active_estimation';
+        folder.IFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\IFS';
     case 'hesunlaptop'
         folder.main = pwd;
         folder.optics = [pwd, '\opticalModel'];
@@ -198,7 +210,7 @@ end
 
 %% Sec #5 - Initialize the parameters for the target, now only consider the monochromatic case
 target.channel = [3, 4, 6, 7, 8, 9, 10];
-if strcmpi(camera.name, 'QSI')
+if strcmpi(camera.name, 'QSI') && strcmpi(simOrLab,'lab')
     % Initialize filter wheel for QSI case
     target.laser = serial('COM12','BaudRate',115200,'Terminator','CR'); %initialize filter wheel for QSI case
     fopen(target.laser)

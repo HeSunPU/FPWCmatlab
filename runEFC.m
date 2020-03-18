@@ -4,10 +4,10 @@ clear;
 close all;
 
 %% Initialize the system and parameters
-Nitr =20;%4000; % iterations of control loop
+Nitr =5;%4000; % iterations of control loop
 cRange = [-8, -3]; %[-12, -3];% the range for display
-simOrLab ='lab';%   'lab';%'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
-runTrial = 3;
+simOrLab ='simulation';%   'lab';%'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
+runTrial = 1;
 Initialization;
 
 %% Initialize the hardware driver if we are running experiment
@@ -499,7 +499,7 @@ for itr = 1 : Nitr
         data.measuredContrastStd(itr) = std(I(darkHole.pixelIndex));
         disp(['The measured average contrast in the dark holes after ', num2str(itr), ' iterations is ', num2str(data.measuredContrastAverage(itr))]);
     end
-    %% Visualizations
+    %% Visualization Prep
     % focal plane estimations in log scale after giving control commands
     IincoEst2D = zeros(size(I));
     if target.broadBandControl
@@ -507,10 +507,7 @@ for itr = 1 : Nitr
     else
         IincoEst2D(darkHole.pixelIndex) = IincoEst;
     end
-    figure(10), imagesc(log10(abs(IincoEst2D))), colorbar;
-    caxis(cRange);
-    title(['Incoherent light after control iteration ', num2str(itr)]);
-    drawnow
+    data.IincoEst2D(:,:,itr) = IincoEst2D;
     
     IcoEst2D = zeros(size(I));
     if target.broadBandControl
@@ -518,30 +515,8 @@ for itr = 1 : Nitr
     else
         IcoEst2D(darkHole.pixelIndex) = abs(EfocalEst).^2;
     end
-    figure(11), imagesc(log10(abs(IcoEst2D))), colorbar;
-    caxis(cRange);
-    title(['Coherent light after control iteration ', num2str(itr)]);
-    drawnow
-    
-    % focal plane images given control commands in log scale
-    if target.broadBandControl
-        figure(1), imagesc(log10(abs(mean(data.I(:, :, :, itr), 3)))), colorbar
-    else
-        figure(1), imagesc(log10(abs(I))), colorbar;
-    end
-    caxis(cRange);
-    title(['After control iteration ', num2str(itr)]);
-    drawnow
-    
-    % contrast correction curve - average
-    if target.broadBandControl
-        figure(2), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o' ,0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s', 0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
-    else
-        figure(2), semilogy(0:itr, [data.contrast0; data.measuredContrastAverage(1:itr)], '-o' ,0:itr, [data.estimatedContrastAverage0; data.estimatedContrastAverage(1:itr)], '-s', 0:itr, [data.estimatedIncoherentAverage0; data.estimatedIncoherentAverage(1:itr)], '-^');
-    end
-    ylim([10^(cRange(1)), 10^(cRange(2))]);
-    legend('measured', 'estimated', 'incoherent');
-    drawnow
+    data.IcoEst2D(:,:,itr) = IcoEst2D;
+
     if (strcmpi(simOrLab, 'simulation'))
         if target.broadBandControl
             figure(22), semilogy(0:itr, mean([data.contrast0, contrastPerfect(:, 1:itr)], 1), '-o');
@@ -562,11 +537,8 @@ for itr = 1 : Nitr
         end
         dImeasured2D = zeros(size(dImeasured));
         dImeasured2D(darkHole.pixelIndex) = dImeasured(darkHole.pixelIndex);
-        figure(3), imagesc(log10(abs(dImeasured2D))), colorbar;
-        title('Measured Intensity Change');
-        caxis(cRange);
-        drawnow
-
+        data.dImeasured2D(:,:,itr) = dImeasured2D;
+%       
         % linear predicted change of focal plane image
         switch controller.whichDM
             case '1'
@@ -583,11 +555,10 @@ for itr = 1 : Nitr
         dImodel = abs(EfocalEstNew).^2 - abs(EfocalEst).^2;
         dImodel2D = zeros(size(dImeasured));
         dImodel2D(darkHole.pixelIndex) = dImodel;
-        figure(4), imagesc(log10(abs(dImodel2D))), colorbar;
-        title('Model-predicted Intensity Change');
-        caxis(cRange);
-        drawnow
+        data.dImodel2D(:,:,itr) = dImodel2D;
     end
+    % Plot data
+    PlotEFC
 end
 data.camExp = camera.exposure;
 %% save data
