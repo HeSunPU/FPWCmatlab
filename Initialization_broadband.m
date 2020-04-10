@@ -38,7 +38,7 @@ switch lower(computerID)
         folder.controller = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\controller';
         folder.estimator = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\estimator';
         folder.hardware = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200317';
+        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200410';
         folder.LOWFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\LOWFS';
 %         folder.python = 'C:\Lab\FPWCpy\active_estimation';
         folder.IFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\IFS';
@@ -210,13 +210,14 @@ end
 
 %% Sec #5 - Initialize the parameters for the target, now only consider the monochromatic case
 target.channel = [3, 4, 6, 7, 8, 9, 10];
-if strcmpi(camera.name, 'QSI') && strcmpi(simOrLab,'lab')
+if strcmpi(camera.name, 'QSI')
     % Initialize filter wheel for QSI case
-    target.laser = serial('COM12','BaudRate',115200,'Terminator','CR'); %initialize filter wheel for QSI case
-    fopen(target.laser)
-    
+    if strcmpi(simOrLab,'lab')
+        target.laser = serial('COM12','BaudRate',115200,'Terminator','CR'); %initialize filter wheel for QSI case
+        fopen(target.laser)
+    end
     target.starWavelengthBroad = 1e-9 * [600,620,640,650,670,694.3,720];
-    target.fluxBroadband = [4.4408e5, 7.1824e5, 6.4512e5, 6.6056e5, 5.2720e5, 3.9396e5];%[1.283e7];
+    target.fluxBroadband = [4.4408e5, 5.1e5,7.1824e5, 6.4512e5, 6.6056e5, 5.2720e5,3.9396e5];%<- fake number for 620, need 7 entries[4.4408e5, 7.1824e5, 6.4512e5, 6.6056e5, 5.2720e5,3.9396e5];%[1.283e7];
     % target.channel = [10];
 elseif strcmpi(camera.name, 'Starlight')
     target.starWavelengthBroad = camera.IFSlam(camera.IFSlamSam); %
@@ -320,7 +321,7 @@ estimator.itrUKF = 10;%10; % Used for 'UKF' only, which has similar formula to I
 estimator.probeArea = [1, 17, -17, 17]; %[0, 17, -17, 17]; % Define the region in lambda / D
 estimator.probeMethod = 'Empirical'; %'OptimalOffsets';% 'Empirical' or 'OptimalOffsets', choose the best probing offset to reduce state covariance
 estimator.measuredAmp = 0;%0;%1; % 1 or 0, 1 stands for that we adjust the probing amplitude using measured images
-estimator.saveData = 0; % 1 or 0, 1 stands for that we want to save the probing command and images for future run
+estimator.saveData = 1; % 1 or 0, 1 stands for that we want to save the probing command and images for future run
 estimator.stateStd0 = 1e-5;%7e-6;%1e-6 % the coefficient used to initialize the state covariance, used for Kalman filter and extended Kalman filter
 estimator.processVarCoefficient = 5e-9;%6e-9;%3e-8;% 3e-9 for physics model;%3e-8;%0.05 * 1e-7;%0.05 * 1e-7;%0.01 * 1e-7 for EKF 2 pair and UKF 2 images%0.01 * 1e-8; for EKF 1 pair and 1 image%0.3 * 1e-7 for lab% the coefficient used for compute the process covariance noise, used for Kalman filter and extended Kalman filter
 estimator.processVarCoefficient2 = 2e-10;% 1e-9;%
@@ -358,7 +359,11 @@ if strcmpi(controller.type, 'EFC')
         data.IFSimage = zeros(1024, 1024, Nitr);
         data.I0 = zeros(camera.Neta, camera.Nxi, target.broadSampleNum); % used to save the original focal images
         data.I = zeros(camera.Neta, camera.Nxi, target.broadSampleNum, Nitr); % used to save the focal images after each control iteration
-        data.Ip = zeros(camera.Neta, camera.Nxi, target.broadSampleNum, 2*estimator.NumImgPair+1, Nitr);
+%         data.Ip = zeros(camera.Neta, camera.Nxi, target.broadSampleNum,...
+%             2*estimator.NumImgPair+1, Nitr); % changed because
+%             takeProbeImgBroad has the order switched
+        data.Ip = zeros(camera.Neta, camera.Nxi,2*estimator.NumImgPair+1,...
+           target.broadSampleNum, Nitr);
         data.EfocalEst = zeros(darkHole.pixelNum, target.broadSampleNum, Nitr); % the estimated coherent electric field at each iteration
         data.IincoEst = zeros(darkHole.pixelNum, target.broadSampleNum, Nitr); % the estimated incoherent light itensity
         data.EfocalEstPerfect = zeros(darkHole.pixelNum, target.broadSampleNum, Nitr); % the estimated coherent electric field at each iteration
@@ -376,6 +381,11 @@ if strcmpi(controller.type, 'EFC')
         data.probeContrast = zeros(Nitr, 1); % the probe contrast
         data.y = zeros(darkHole.pixelNum, estimator.NumImgPair, Nitr); % the difference images
         data.yBroadband = zeros(darkHole.pixelNum, estimator.NumImgPair, target.broadSampleNum, Nitr); % the difference images
+        
+        data.dImeasured2D = zeros(camera.Neta, camera.Nxi, Nitr);
+        data.dImodel2D = zeros(camera.Neta, camera.Nxi, Nitr);
+        data.IincoEst2D = zeros(camera.Neta, camera.Nxi, Nitr);
+        data.IcoEst2D = zeros(camera.Neta, camera.Nxi, Nitr);
         switch lower(estimator.type)
             case {'perfect'}
             case {'kalman', 'batch'}

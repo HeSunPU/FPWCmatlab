@@ -11,9 +11,9 @@
 curFig = figure(1); 
 set( curFig, 'Position', [15 100 900 500]);
 if target.broadBandControl
-    figure(1), imagesc(log10(abs(mean(data.I(:, :, :, itr), 3)))), colorbar
+    subplot(2,3,1), imagesc(log10(abs(mean(data.I(:, :, :, itr), 3)))), colorbar
 else
-    figure(1), subplot(2,3,1), imagesc(log10(abs(data.I(:,:,itr)))), colorbar;
+    subplot(2,3,1), imagesc(log10(abs(data.I(:,:,itr)))), colorbar;
 end
 caxis(cRange);
 title(['After control iteration ', num2str(itr)]);
@@ -35,9 +35,10 @@ title(['Coherent light after control iteration ', num2str(itr)]);
 
 
 if target.broadBandControl
-    %     figure(2), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o' ,0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s', 0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
+    subplot(2,3,4), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o',...
+        0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s',...
+        0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
 else
-    
     subplot(2,3,4), semilogy(0:itr, [data.contrast0; data.measuredContrastAverage(1:itr)],'-o',...
         0:itr, [data.estimatedContrastAverage0; data.estimatedContrastAverage(1:itr)],'-s', ...
         0:itr, [data.estimatedIncoherentAverage0; data.estimatedIncoherentAverage(1:itr)], '-^');
@@ -47,8 +48,27 @@ legend('measured', 'estimated', 'incoherent');
 xlabel('iteration','interpreter','latex');
 ylabel('contrast $[I/I_{max}]$','interpreter','latex');
 drawnow
-% curFig = gcf;
-
+%%
+if target.broadBandControl
+    curFig2 = figure(2);
+    set( curFig2, 'Position', [600 200 900 500]);
+    for iP = 1:1:target.broadSampleNum
+        subplot(2,ceil(target.broadSampleNum/2),iP), imagesc(log10(abs(data.I(:, :, iP, itr)))), colorbar
+        title([num2str(target.starWavelengthBroad(iP)*10^9),'nm']);
+        caxis(cRange);
+    end
+end
+%%
+%     if (strcmpi(simOrLab, 'simulation'))
+%         if target.broadBandControl
+%             figure(22), semilogy(0:itr, mean([data.contrast0, contrastPerfect(:, 1:itr)], 1), '-o');
+%         else
+%             figure(22), semilogy(0:itr, [data.contrast0; contrastPerfect(1:itr)], '-o');
+%         end
+%         ylim([10^(cRange(1)), 10^(cRange(2))]);
+%         legend('perfect');
+%         drawnow
+%     end
 
 %% Save
 if  any([1,floor(Nitr/2),Nitr] - itr == 0) && estimator.saveData == 1
@@ -59,6 +79,12 @@ if  any([1,floor(Nitr/2),Nitr] - itr == 0) && estimator.saveData == 1
         num2str(runTrial),startTime];
     saveas(curFig,[figName,'.fig']);
     saveas(curFig,[figName,'.jpg']);
+    if target.broadBandControl
+        figName2 = [folder.dataLibrary,'\iBroadbandSnapshotItr',num2str(itr),'Run',...
+            num2str(runTrial),startTime];
+        saveas(curFig2,[figName2,'.fig']);
+        saveas(curFig2,[figName2,'.jpg']);
+    end
 end
 
 
