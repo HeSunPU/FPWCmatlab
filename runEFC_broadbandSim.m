@@ -11,7 +11,7 @@ cRange = [-7, -3]; %[-12, -3];% the range for display
 simOrLab = 'simulation';%'simulation';%  'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
 runTrial = 1;
 systemID_flag = true;%false;%
-n_systemID = 3;%10;
+n_systemID = 2;%10;
 if ~systemID_flag
     n_systemID = 1;
 end
@@ -341,12 +341,7 @@ for k_EM = 1 : n_systemID
             IincoEst2D(darkHole.pixelIndex) = IincoEst;
         end
         data.IincoEst2D(:,:,itr) = IincoEst2D;
-        %
-        %     figure(10), imagesc(log10(abs(IincoEst2D))), colorbar;
-        %     caxis(cRange);
-        %     title(['Incoherent light after control iteration ', num2str(itr)]);
-        %     drawnow
-        
+
         IcoEst2D = zeros(size(I));
         if target.broadBandControl
             IcoEst2D(darkHole.pixelIndex) = mean(abs(data.EfocalEst(:, :, itr)).^2, 2);
@@ -354,21 +349,7 @@ for k_EM = 1 : n_systemID
             IcoEst2D(darkHole.pixelIndex) = abs(EfocalEst).^2;
         end
         data.IcoEst2D(:,:,itr) = IcoEst2D;
-        %     figure(11), imagesc(log10(abs(IcoEst2D))), colorbar;
-        %     caxis(cRange);
-        %     title(['Coherent light after control iteration ', num2str(itr)]);
-        %     drawnow
-        
-        % focal plane images given control commands in log scale
-        %     if target.broadBandControl
-        %         figure(1), imagesc(log10(abs(mean(data.I(:, :, :, itr), 3)))), colorbar
-        %     else
-        %         figure(1), imagesc(log10(abs(I))), colorbar;
-        %     end
-        %     caxis(cRange);
-        %     title(['After control iteration ', num2str(itr)]);
-        %     drawnow
-        
+
         % Model vs Measured Intensity Change Calc
         if itr == 1
             dImeasured = mean(data.I(:,:,:,itr) - data.I0,3);
@@ -403,18 +384,6 @@ for k_EM = 1 : n_systemID
         data.dImodel2D(:,:,itr) = dImodel2D;
         
         %
-        
-        % contrast correction curve - average
-%         if target.broadBandControl
-%             figure(2), semilogy(0:itr, mean([data.contrast0, data.measuredContrastAverage(:, 1:itr)], 1), '-o',...
-%                 0:itr, mean([data.estimatedContrastAverage0, data.estimatedContrastAverage(:, 1:itr)], 1), '-s',...
-%                 0:itr, mean([data.estimatedIncoherentAverage0, data.estimatedIncoherentAverage(:, 1:itr)], 1), '-^');
-%         else
-%             figure(2), semilogy(0:itr, [data.contrast0; data.measuredContrastAverage(1:itr)], '-o' ,0:itr, [data.estimatedContrastAverage0; data.estimatedContrastAverage(1:itr)], '-s', 0:itr, [data.estimatedIncoherentAverage0; data.estimatedIncoherentAverage(1:itr)], '-^');
-%         end
-%         ylim([10^(cRange(1)), 10^(cRange(2))]);
-%         legend('measured', 'estimated', 'incoherent');
-%         drawnow
         % keep?
         %     if (strcmpi(simOrLab, 'simulation'))
         %         if target.broadBandControl
@@ -479,18 +448,22 @@ for k_EM = 1 : n_systemID
         hold on
         legend
         %% correct model errors using FPWCpy:HCIL_broadband_EM.py
-        dataIFS.I = zeros(darkHole.pixelNum, target.broadSampleNum, 2*estimator.NumImgPair+1, Nitr+1);
+%         dataIFS.I = zeros(darkHole.pixelNum, target.broadSampleNum, 2*estimator.NumImgPair+1, Nitr+1);
+        dataIFS.I = zeros(darkHole.pixelNum, 2*estimator.NumImgPair+1,target.broadSampleNum,  Nitr+1);
+
         for j = 1 : 2*estimator.NumImgPair+1
             for n = 1 : target.broadSampleNum
-                temp = data.Ip0(:, :, n, j);
-                dataIFS.I(:, n, j, 1) = temp(darkHole.pixelIndex);
+                temp = data.Ip0(:,:, j, n); % susan switched indices
+%                 dataIFS.I(:, n, j, 1) = temp(darkHole.pixelIndex);
+                dataIFS.I(:, j, n, 1) = temp(darkHole.pixelIndex);
             end
         end
         for k = 1 : Nitr
             for j = 1 : 2*estimator.NumImgPair+1
                 for n = 1 : target.broadSampleNum
-                    temp = data.Ip(:, :, n, j, k);
-                    dataIFS.I(:, n, j, k+1) = temp(darkHole.pixelIndex);
+                    temp = data.Ip(:, :, j, n, k);
+%                     dataIFS.I(:, n, j, k+1) = temp(darkHole.pixelIndex);
+                    dataIFS.I(:, j,n, k+1) = temp(darkHole.pixelIndex);
                 end
             end
         end
@@ -512,9 +485,14 @@ for k_EM = 1 : n_systemID
         model.G2 = G_broadband(:, DM.activeActNum+1:end, :);
         
     else
-        eval([data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
+        eval([data.controllerType, coronagraph.type, camera.name,num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), '=data;']);
         cd(folder.dataLibrary);
-        eval(['save ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ' ', data.controllerType, coronagraph.type, camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', num2str(runTrial), ';']);
+        eval(['save ', data.controllerType, coronagraph.type, camera.name, ...
+            num2str(yyyymmdd(datetime('today'))), 'Trial',...
+            num2str(runTrial), ' ', data.controllerType, coronagraph.type,...
+            camera.name, num2str(yyyymmdd(datetime('today'))), 'Trial', ...
+            num2str(runTrial), ';']);
+        
         cd(folder.main);
     end
     

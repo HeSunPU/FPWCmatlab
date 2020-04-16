@@ -38,9 +38,9 @@ switch lower(computerID)
         folder.controller = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\controller';
         folder.estimator = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\estimator';
         folder.hardware = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200410';
+        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200415';
         folder.LOWFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\LOWFS';
-%         folder.python = 'C:\Lab\FPWCpy\active_estimation';
+        folder.python = 'C:\Users\sfr\Documents\HCIL_pton\FPWCpy\active_estimation';
         folder.IFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\IFS';
     case 'hesunlaptop'
         folder.main = pwd;
