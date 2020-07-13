@@ -40,7 +40,20 @@ if DM.noise == 1
 end
 
 % simulate the image
-[~, ~, I] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command);
+if target.broadBandEst == 1 % full broadband image used to estimate E-field
+    Itot = zeros(camera.Neta,camera.Nxi,target.broadSampleNum);
+    target_help = target;
+    for kWavelength = 1 : target.broadSampleNum
+        target_help.starWavelength = target.starWavelengthBroad(kWavelength);
+        target_help.normalization = target.normalizationBroadband(kWavelength);
+        target_help.flux = target.fluxBroadband(kWavelength);
+        [~, ~, Ii] = opticalModel(target_help, DM, coronagraph, camera, DM1command, DM2command);
+        Itot(:,:,kWavelength) = Ii;
+    end
+    I = sum(Itot,3); % total broad band image
+else
+    [~, ~, I] = opticalModel(target, DM, coronagraph, camera, DM1command, DM2command);
+end
 % I = imtranslate(I, 1*[rand(1), rand(1)]); % shift the images to simulate
 % telescople jittering
 if (strcmpi(coronagraph.type, 'SPC'))

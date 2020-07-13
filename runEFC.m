@@ -4,7 +4,7 @@ clear;
 close all;
 
 %% Initialize the system and parameters
-Nitr =5;%4000; % iterations of control loop
+Nitr =15;%4000; % iterations of control loop
 cRange = [-8, -3]; %[-12, -3];% the range for display
 simOrLab ='simulation';%   'lab';%'simulation' or 'lab', run the wavefront correction loops in simulation or in lab
 runTrial = 1;
@@ -603,7 +603,7 @@ parfor index = 1: size(model.G1, 1)
     delta2 = 1e-1; % might need to adjust, might need to make smaller
     batchSize = 3; % how many observations for each updates
     %%
-    for learningItr = 1 : batchSize : 18 %max number should be largest number divisible by 3 and less than Nitr for controls
+    for learningItr = 1 : batchSize : 12 %max number should be largest number divisible by 3 and less than Nitr for controls
         u = uAll(:, learningItr : learningItr+batchSize-1);
         uProbe = uProbeAll(:, :, learningItr : learningItr+batchSize-1);
         y = yAll(:, learningItr : learningItr+batchSize-1);

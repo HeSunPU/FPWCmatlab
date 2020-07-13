@@ -38,7 +38,7 @@ switch lower(computerID)
         folder.controller = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\controller';
         folder.estimator = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\estimator';
         folder.hardware = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200415';
+        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200421';
         folder.LOWFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\LOWFS';
         folder.python = 'C:\Users\sfr\Documents\HCIL_pton\FPWCpy\active_estimation';
         folder.IFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\IFS';
@@ -136,7 +136,7 @@ end
 coronagraph.coronagraph_perfect = coronagraph;
 coronagraph.coronagraph_perfect.error = 0;
 %% Sec #4 - Initialize the parameters for camera
-camera.name = 'QSI'; %'Starlight'; % 
+camera.name = 'Starlight'; % 'QSI'; %
 if strcmpi(camera.name, 'QSI')
     camera.pitch = 4.54e-6; % pitch size of the camera pixel in meters
     camera.binXi = 4; % pixel binning in x direction
@@ -230,6 +230,7 @@ end
 target.star = 1; % 1 for 'on', 0 for 'off'
 target.planet = 0; % 1 for 'on', 0 for 'off'
 target.broadBandControl = 1; % broadband control or monochromatic control
+target.broadBandEst = 1; % 1 if full broadband image is used for estimation instead of individual images 
 target.planetContrast = 1e-8; % the contrast of planet compared with star
 target.starWavelength = 660e-9; %658e-9;% Unit: meters
 

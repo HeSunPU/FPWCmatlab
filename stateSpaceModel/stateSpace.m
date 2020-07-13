@@ -74,4 +74,6 @@ model.G2 = G2;
 model.G1sq = G1sq;
 model.G2sq = G2sq;
 disp('I am done!');
+% load chirp
+% sound(y,0.5*Fs)
 end

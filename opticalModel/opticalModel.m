@@ -99,6 +99,26 @@ DM1phase = exp(2 * 1i * pi * mirrorFactor * DM1shape / lambda); % phase perturba
 EDM1 = Ein .* DM1phase; % electric field after DM1 phase perturbation
 EDM1Pad = padarray(EDM1, [floor(Ndm/2), floor(Ndm/2)]); % pad the field  with zeros
 
+
+%sfr
+% figure(222)
+% subplot(2,2,1)
+% imagesc(real(DM1phase))
+% title('Real DM1phase')
+% colorbar
+% subplot(2,2,2)
+% imagesc(real(Ein))
+% title('Ein')
+% colorbar
+% subplot(2,2,3)
+% imagesc(real(EDM1))
+% title('EDM1 - Leaving DM1')
+% colorbar
+% subplot(2,2,4)
+% imagesc(real(EDM1Pad))
+% title('EDM1 padded')
+% colorbar
+
 % propagate from DM1 to DM2
 NdmExpand = size(EDM1Pad, 1); % pixel number of augmented field
 L = DM.widthDM * NdmExpand / Ndm; % width of augmented field

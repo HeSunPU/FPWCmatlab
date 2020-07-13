@@ -38,7 +38,7 @@ switch lower(computerID)
         folder.controller = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\controller';
         folder.estimator = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\estimator';
         folder.hardware = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\hardware';
-        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200317';
+        folder.dataLibrary = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\dataLibrary\20200709';
         folder.LOWFS = 'C:\Users\sfr\Documents\HCIL_pton\FPWCmatlab\LOWFS';
     case 'hesunlaptop'
         folder.main = pwd;
@@ -206,6 +206,7 @@ camera.adaptive_exposure = 0; % 1 stands for adapting camera exposure time for e
 target.star = 1; % 1 for 'on', 0 for 'off'
 target.planet = 0; % 1 for 'on', 0 for 'off'
 target.broadBandControl = 0;%1; % broadband control or monochromatic control
+target.broadBandEst = 0; % 1 if full broadband image is used for estimation instead of individual images 
 target.planetContrast = 1e-8; % the contrast of planet compared with star
 target.starWavelength = 635e-9; %705e-9;%658e-9;% Unit: meters
 target.starChannel = 1;%4; % channel on laser corresponding to star wavelength
@@ -214,6 +215,7 @@ target.broadSampleNum = length(target.starWavelengthBroad); % The length of broa
 target.planetWavelength = 648e-9; % Unit: meters
 target.separation = 8; % Unit: Wavelength / Diameter (lambda / D)
 target.normalization = 220.6292;%147.1332 for lab simulation; %1; % normalization factor for simulated images
+target.wavefrontAmplitude = 'gaussian'; %'flat' % use gaussian if spatial filter is in place
 target.flux =1.9808e+08;%2.2812e+09;% 2.4117e+09;%2.3546e+09;% 2.4424e+09;% 2.7516e+09;%1.9383e+09;%1.1775e+09;%2.0381e+09;%1.9475e+09;%2.0196e+09;%4.5057e+09;%<- uses laser power 55 1.9401e+09;%2.0068e+09;%1.9611e+09;%1.9576e+09;%1.9475e+09;%1.9384e+09;%2.0293e+09;%2.0251e+09;%2.1475e+09;% 3.188e+8;%1.878e+09;%1.576e+09;%1.4550e+09;%1.57911e+9;%1.84538e+9;%1.77977e+9;%1.6229e+9;%1.51435e+9;%1.65766e+9;%1.54116e+9;%1.81802e+9;%1.80278e+9;%1.724e+9;%1.659e+9;%1.8132e+9;%1.92707e+09;%12.2802e+8;%13.1419e+8;%13.4576e+8;%13.8209e+8;%10.0209e+8;%10.0854e+8;%9.8533e+8;%5.4127e+8;%5.5863e+8;%6.5368e+8;%5.0031e+8;%3.6612e+8;%;%6.232e+8;%5.4321e+8;%4.4e+8;%4.87e+8;%4.8573e+8; %1.54382e+9;% laser_Power(54, 1); 4.556e+8;% %4.8573e+8;%5.1371e+8;%8e+8; % peak count of PSF per pixel per second
 
 target.drift = 0; % 1 stands for the drift exists, 0 for no drift
@@ -264,7 +266,15 @@ if strcmpi(coronagraph.type, 'SPLC')
     end
 elseif strcmpi(coronagraph.type, 'SPC')
     if target.star
-        target.EinStar = ones(DM.DMmesh(1), DM.DMmesh(2));
+        if strcmpi(target.wavefrontAmplitude, 'gaussian')
+            lens1error = 1.0; % in mm
+            plotwfAmp = 1;
+            dmMask = 1;
+            target.EinStar = gaussianLaserEinCalc(target.starWavelength*1000,...
+                lens1error,DM,plotwfAmp,dmMask);
+        else
+            target.EinStar = ones(DM.DMmesh(1), DM.DMmesh(2));
+        end
         target_help = target;
         target_help.star = 1;
         target_help.planet = 0;
